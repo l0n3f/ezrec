@@ -49,7 +49,7 @@ call :install_tool "dnsx" "github.com/projectdiscovery/dnsx/cmd/dnsx@latest"
 
 echo.
 echo 📦 Installing other reconnaissance tools...
-call :install_tool "amass" "github.com/OWASP/Amass/v4/...@master"
+call :install_tool "amass" "github.com/OWASP/Amass/v4/cmd/amass@latest"
 call :install_tool "gau" "github.com/lc/gau/v2/cmd/gau@latest"
 call :install_tool "waybackurls" "github.com/tomnomnom/waybackurls@latest"
 call :install_tool "ffuf" "github.com/ffuf/ffuf@latest"

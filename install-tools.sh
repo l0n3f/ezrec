@@ -89,7 +89,7 @@ install_tool "dnsx" "github.com/projectdiscovery/dnsx/cmd/dnsx@latest" "dnsx"
 print_status "Installing other reconnaissance tools..."
 
 # Install other tools
-install_tool "amass" "github.com/OWASP/Amass/v4/...@master" "amass"
+install_tool "amass" "github.com/OWASP/Amass/v4/cmd/amass@latest" "amass"
 install_tool "gau" "github.com/lc/gau/v2/cmd/gau@latest" "gau"
 install_tool "waybackurls" "github.com/tomnomnom/waybackurls@latest" "waybackurls"
 install_tool "ffuf" "github.com/ffuf/ffuf@latest" "ffuf"
