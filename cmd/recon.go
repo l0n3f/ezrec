@@ -300,11 +300,20 @@ func runRecon(cmd *cobra.Command, args []string) error {
 
 	// Stage 5.5: WAF Detection (if enabled)
 	var wafResults map[string]*ai.WAFDetection
-	if wafDetection && len(crawledURLs) > 0 && aiClient != nil {
-		logger.Info("Starting WAF detection")
+	var wafTargets []string
+
+	// Use crawled URLs if available, otherwise use live hosts from httpx
+	if len(crawledURLs) > 0 {
+		wafTargets = crawledURLs
+	} else if len(currentTargets) > 0 {
+		wafTargets = currentTargets
+	}
+
+	if wafDetection && len(wafTargets) > 0 && aiClient != nil {
+		logger.Info("Starting WAF detection", "targets", len(wafTargets))
 
 		var err error
-		wafResults, err = reconEngine.DetectWAF(ctx, crawledURLs, aiClient)
+		wafResults, err = reconEngine.DetectWAF(ctx, wafTargets, aiClient)
 		if err != nil {
 			logger.Error("WAF detection failed", "error", err)
 			if telegramClient != nil {
@@ -329,8 +338,8 @@ func runRecon(cmd *cobra.Command, args []string) error {
 	}
 
 	// Stage 6: XSS Testing
-	if enableXSS && len(crawledURLs) > 0 {
-		logger.Info("Starting XSS testing")
+	if enableXSS && len(wafTargets) > 0 {
+		logger.Info("Starting XSS testing", "targets", len(wafTargets))
 
 		// Configure XSS options
 		xssOptions := recon.XSSOptions{
@@ -340,7 +349,7 @@ func runRecon(cmd *cobra.Command, args []string) error {
 			WAFDetect: wafDetection,
 		}
 
-		result, err := reconEngine.TestXSS(ctx, crawledURLs, xssOptions)
+		result, err := reconEngine.TestXSS(ctx, wafTargets, xssOptions)
 		if err != nil {
 			logger.Error("XSS testing failed", "error", err)
 			if telegramClient != nil {
