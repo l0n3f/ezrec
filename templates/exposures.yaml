@@ -1,0 +1,43 @@
+id: exposures
+
+info:
+  name: Common Exposures
+  author: ezrec
+  severity: high
+  description: Detects common information exposures
+  tags: exposure,config,backup
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}/.env"
+      - "{{BaseURL}}/.git/config"
+      - "{{BaseURL}}/config.php"
+      - "{{BaseURL}}/wp-config.php"
+      - "{{BaseURL}}/database.yml"
+      - "{{BaseURL}}/settings.py"
+      - "{{BaseURL}}/.htaccess"
+      - "{{BaseURL}}/web.config"
+      - "{{BaseURL}}/phpinfo.php"
+      - "{{BaseURL}}/info.php"
+      - "{{BaseURL}}/server-info"
+      - "{{BaseURL}}/server-status"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "DB_PASSWORD"
+          - "SECRET_KEY"
+          - "API_KEY"
+          - "database_password"
+          - "mysql_password"
+          - "AWS_SECRET"
+          - "[core]"
+          - "<?php"
+          - "phpinfo()"
+        condition: or

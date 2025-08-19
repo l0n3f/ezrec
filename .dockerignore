@@ -1,0 +1,30 @@
+# Build artifacts
+ezrec
+ezrec.exe
+*.exe
+
+# Output directories
+out/
+*.log
+
+# Development files
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Documentation (not needed in container)
+README.md
+EXAMPLES.md
+DEMO.md
+PROJECT_SUMMARY.md
+
+# Test files
+test-domains.txt
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Go specific
+vendor/

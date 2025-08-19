@@ -1,0 +1,43 @@
+id: admin-panels
+
+info:
+  name: Admin Panel Detection
+  author: ezrec
+  severity: medium
+  description: Detects common admin panels and dashboards
+  tags: admin,panel,dashboard
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}/admin"
+      - "{{BaseURL}}/admin/"
+      - "{{BaseURL}}/administrator"
+      - "{{BaseURL}}/wp-admin/"
+      - "{{BaseURL}}/cpanel"
+      - "{{BaseURL}}/control"
+      - "{{BaseURL}}/dashboard"
+      - "{{BaseURL}}/manage"
+      - "{{BaseURL}}/panel"
+      - "{{BaseURL}}/backend"
+      - "{{BaseURL}}/console"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: word
+        words:
+          - "admin"
+          - "administrator"
+          - "dashboard"
+          - "control panel"
+          - "login"
+          - "username"
+          - "password"
+        condition: or
+        case-insensitive: true
