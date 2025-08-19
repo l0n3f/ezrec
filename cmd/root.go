@@ -16,6 +16,23 @@ import (
 	"github.com/ezrec/ezrec/internal/log"
 )
 
+// showBanner displays the l0n3 ASCII banner
+func showBanner() {
+	banner := `
+██╗      ██████╗ ███╗   ██╗██████╗ 
+██║     ██╔═████╗████╗  ██║╚════██╗
+██║     ██║██╔██║██╔██╗ ██║ █████╔╝
+██║     ████╔╝██║██║╚██╗██║ ╚═══██╗
+███████╗╚██████╔╝██║ ╚████║██████╔╝
+╚══════╝ ╚═════╝ ╚═╝  ╚═══╝╚═════╝ 
+                                   
+🔥 ezrec - Ultimate Bug Bounty Recon & Evasion Orchestrator
+💀 Advanced WAF Bypass | AI-Powered Testing | Stealth Mode
+📡 github.com/l0n3f/ezrec
+`
+	fmt.Print(banner)
+}
+
 var (
 	cfgFile  string
 	program  string
@@ -75,6 +92,27 @@ Features:
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() error {
+	// Show banner unless quiet mode is enabled or help is requested
+	args := os.Args
+	isHelp := false
+	isQuiet := false
+	
+	for _, arg := range args {
+		if arg == "--help" || arg == "-h" {
+			isHelp = true
+			break
+		}
+		if arg == "--quiet" || arg == "-q" {
+			isQuiet = true
+			break
+		}
+	}
+	
+	// Show banner for actual command execution (not help)
+	if !isHelp && !isQuiet && len(args) > 1 {
+		showBanner()
+	}
+
 	// Setup signal handling for graceful shutdown
 	ctx, cancel = signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

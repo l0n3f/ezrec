@@ -1,42 +1,52 @@
-# ezrec - Bug Bounty Recon Orchestrator
+# 🔥 ezrec - Ultimate Bug Bounty Recon & Evasion Orchestrator
 
-ezrec is a comprehensive bug bounty reconnaissance tool that automates the entire discovery pipeline from subdomain enumeration to vulnerability testing. It's designed to be modular, secure, and terminal-first, allowing you to adapt to different bug bounty program requirements while respecting rate limits, scopes, and custom headers.
+ezrec is the most comprehensive bug bounty reconnaissance and evasion tool that automates the entire discovery pipeline from subdomain enumeration to vulnerability testing AND provides advanced WAF bypass capabilities. It's designed to be modular, secure, and terminal-first, allowing you to adapt to different bug bounty program requirements.
 
-## Features
+## 🚀 Main Commands
 
-### 🔍 Modular & Scalable Recon
+ezrec has **TWO main commands**:
+
+### 1. 🔍 `ezrec recon` - Reconnaissance Pipeline
+Complete automated reconnaissance workflow with AI-powered features.
+
+### 2. 🛡️ `ezrec evasion` - Advanced Bypass Techniques
+WAF bypass payloads, rate limiting evasion, and stealth techniques.
+
+---
+
+## ✨ Features
+
+### 🔍 Reconnaissance Pipeline (`ezrec recon`)
 - **Subdomain enumeration** with subfinder and amass
 - **Host liveness and fingerprinting** with httpx
 - **Endpoint crawling** with katana
 - **Historical URL discovery** with gau and waybackurls
 - **Critical endpoint classification** (login, admin, API, payments)
+- **Interactive XSS testing** with AI-powered payload suggestions
+- **Nuclei integration** with enhanced bug bounty templates
+- **Advanced fuzzing** with ffuf and custom wordlists
+- **AI-powered WAF detection** before testing
+- **Structured output**: Markdown, CSV, and NDJSON for each stage
 
-### ⚡ Advanced Testing
-- **Interactive XSS testing** with prompt-based payload input
-- **AI-powered payload suggestions** for enhanced testing
-- **Nuclei integration** with enhanced external templates
-- **Advanced fuzzing** with ffuf and configurable arc counts
+### 🛡️ Evasion & Bypass (`ezrec evasion`)
+- **WAF bypass payloads** for XSS, SQLi, LFI, RCE, SSRF
+- **WAF-specific bypasses** for Cloudflare, AWS WAF, Azure WAF, ModSecurity, Imperva, Akamai, F5 ASM
+- **Rate limiting evasion** with user-agent rotation
+- **Stealth mode techniques** for anti-detection
+- **Massive payload database** (200+ bypass techniques)
+- **Generated markdown files** with detailed explanations
 
-### 📊 Structured Output & Reporting
-- **Multiple output formats**: Markdown, CSV, and NDJSON for each stage
-- **Intermediate files** for resuming incomplete scans (--resume)
-- **Visual summaries** that are easy to share and analyze
+### 🤖 AI Integration
+- **OpenAI, Anthropic, Ollama** support
+- **Context-aware payload generation**
+- **WAF detection and bypass suggestions**
+- **Smart vulnerability analysis**
 
 ### 📱 Integration & Alerts
-- **Telegram notifications** for stage completion
-- **Immediate critical alerts** for findings like exposed keys/tokens
-- **Customizable alert keywords** and severity levels
-
-### 🛡️ Security & Compliance
-- **Rate limiting** and concurrency control to avoid server overload
-- **Custom headers and authentication** configurable per program
-- **Scope awareness** with regex inclusion/exclusion patterns
-- **Backoff and jitter** to prevent detection and blocking
-
-### 🎯 CLI-First & Customizable
-- **Individual stage flags** for granular control
+- **Telegram notifications** for critical findings
 - **Program-specific configurations** via YAML profiles
-- **Flexible inputs**: single domain, domain list, or previous results
+- **Custom headers and authentication**
+- **Rate limiting and concurrency control**
 
 ## Installation
 
@@ -62,7 +72,7 @@ sudo dnf install golang git
 brew install go git
 
 # Clone and build ezrec
-git clone https://github.com/ezrec/ezrec.git
+git clone https://github.com/l0n3f/ezrec.git
 cd ezrec
 go build -o ezrec main.go
 
@@ -85,7 +95,7 @@ ezrec --help
 # Install Git from https://git-scm.com/download/win
 
 # Clone and build ezrec
-git clone https://github.com/ezrec/ezrec.git
+git clone https://github.com/l0n3f/ezrec.git
 cd ezrec
 go build -o ezrec.exe main.go
 
@@ -103,7 +113,7 @@ $env:PATH += ";C:\path\to\ezrec"
 
 ```bash
 # Install directly from Go modules (any OS with Go installed)
-go install github.com/ezrec/ezrec@latest
+go install github.com/l0n3f/ezrec@latest
 
 # The binary will be installed to $GOPATH/bin or $HOME/go/bin
 # Make sure this directory is in your PATH
@@ -115,12 +125,12 @@ go install github.com/ezrec/ezrec@latest
 
 ```bash
 # Download latest release
-curl -L -o ezrec https://github.com/ezrec/ezrec/releases/latest/download/ezrec-linux-amd64
+curl -L -o ezrec https://github.com/l0n3f/ezrec/releases/latest/download/ezrec-linux-amd64
 chmod +x ezrec
 sudo mv ezrec /usr/local/bin/
 
 # Install external tools
-curl -L -o install-tools.sh https://raw.githubusercontent.com/ezrec/ezrec/main/install-tools.sh
+curl -L -o install-tools.sh https://raw.githubusercontent.com/l0n3f/ezrec/main/install-tools.sh
 chmod +x install-tools.sh && ./install-tools.sh
 ```
 
@@ -128,15 +138,15 @@ chmod +x install-tools.sh && ./install-tools.sh
 
 ```bash
 # Intel Macs
-curl -L -o ezrec https://github.com/ezrec/ezrec/releases/latest/download/ezrec-darwin-amd64
+curl -L -o ezrec https://github.com/l0n3f/ezrec/releases/latest/download/ezrec-darwin-amd64
 # Apple Silicon Macs
-curl -L -o ezrec https://github.com/ezrec/ezrec/releases/latest/download/ezrec-darwin-arm64
+curl -L -o ezrec https://github.com/l0n3f/ezrec/releases/latest/download/ezrec-darwin-arm64
 
 chmod +x ezrec
 sudo mv ezrec /usr/local/bin/
 
 # Install external tools
-curl -L -o install-tools.sh https://raw.githubusercontent.com/ezrec/ezrec/main/install-tools.sh
+curl -L -o install-tools.sh https://raw.githubusercontent.com/l0n3f/ezrec/main/install-tools.sh
 chmod +x install-tools.sh && ./install-tools.sh
 ```
 
@@ -144,10 +154,10 @@ chmod +x install-tools.sh && ./install-tools.sh
 
 ```powershell
 # Download using PowerShell
-Invoke-WebRequest -Uri "https://github.com/ezrec/ezrec/releases/latest/download/ezrec-windows-amd64.exe" -OutFile "ezrec.exe"
+Invoke-WebRequest -Uri "https://github.com/l0n3f/ezrec/releases/latest/download/ezrec-windows-amd64.exe" -OutFile "ezrec.exe"
 
 # Download and run tool installer
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/ezrec/ezrec/main/install-tools.bat" -OutFile "install-tools.bat"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/l0n3f/ezrec/main/install-tools.bat" -OutFile "install-tools.bat"
 .\install-tools.bat
 ```
 
@@ -185,7 +195,7 @@ go install github.com/ffuf/ffuf@latest
 
 ```bash
 # Build Docker image
-git clone https://github.com/ezrec/ezrec.git
+git clone https://github.com/l0n3f/ezrec.git
 cd ezrec
 docker build -t ezrec .
 
@@ -243,10 +253,106 @@ ffuf -V
 - 🐛 [Issue Tracker](https://github.com/ezrec/ezrec/issues)
 - 💬 [Discussions](https://github.com/ezrec/ezrec/discussions)
 
-## Quick Start
+---
 
-### Basic Usage
+## 🔍 Reconnaissance Commands
 
+### Main Command: `ezrec recon`
+
+Run the complete reconnaissance pipeline with configurable stages.
+
+**Basic Usage:**
+```bash
+ezrec recon [flags]
+```
+
+### 🎯 Core Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--domain` | Single domain to start reconnaissance | |
+| `--seed-file` | File containing list of domains/subdomains | |
+| `--program` | Bug bounty program name (loads `./profiles/$program.yml`) | |
+| `--outdir` | Output directory for results | `./results` |
+
+### 📊 Stage Control Flags
+
+| Flag | Description |
+|------|-------------|
+| `--subdomains` | Enable subdomain enumeration (subfinder + amass) |
+| `--httpx` | Enable host liveness and fingerprinting |
+| `--crawl` | Enable endpoint crawling (katana) |
+| `--urls` | Enable historical URL discovery (gau + waybackurls) |
+| `--endpoints` | Enable endpoint classification |
+| `--xss` | Enable XSS testing |
+| `--nuclei` | Enable Nuclei vulnerability scanning |
+| `--ffuf` | Enable directory/file fuzzing |
+
+### 🤖 AI & WAF Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--ai` | Enable AI-powered features | |
+| `--ai-provider` | AI provider (openai, anthropic, ollama) | `openai` |
+| `--ai-key` | AI API key | |
+| `--ai-model` | AI model to use | `gpt-4` |
+| `--waf-detect` | Enable WAF detection before testing | |
+| `--waf-bypass` | Enable AI-powered WAF bypass payload generation | |
+
+---
+
+## 🛡️ Evasion Commands
+
+### Main Command: `ezrec evasion`
+
+Advanced evasion and bypass techniques for WAF bypassing, rate limiting evasion, and stealth mode.
+
+### Subcommands:
+
+#### `ezrec evasion waf-bypass` - WAF Bypass Payloads
+
+Generate WAF bypass payloads using various evasion techniques.
+
+**Usage:**
+```bash
+ezrec evasion waf-bypass --attack-type <type> --payload <payload> [flags]
+```
+
+**Required Flags:**
+| Flag | Description | Options |
+|------|-------------|---------|
+| `--attack-type` | Type of attack | `xss`, `sqli`, `lfi`, `rce`, `ssrf` |
+| `--payload` | Base payload to generate bypasses for | |
+
+**Optional Flags:**
+| Flag | Description | Options | Default |
+|------|-------------|---------|---------|
+| `--waf-type` | Target WAF type | `cloudflare`, `aws_waf`, `azure_waf`, `modsecurity`, `imperva`, `akamai`, `f5_asm` | |
+| `--output` | Output format | `text`, `json`, `csv`, `file` | `text` |
+
+**Supported Attack Types:**
+- **`xss`** - Cross-Site Scripting bypasses (89+ payloads)
+- **`sqli`** - SQL Injection bypasses (60+ payloads)
+- **`lfi`** - Local File Inclusion bypasses (20+ payloads)
+- **`rce`** - Remote Code Execution bypasses (20+ payloads)
+- **`ssrf`** - Server-Side Request Forgery bypasses (50+ payloads)
+
+**Supported WAF Types:**
+- **`cloudflare`** - Cloudflare WAF (optimized bypasses)
+- **`aws_waf`** - Amazon Web Application Firewall
+- **`azure_waf`** - Microsoft Azure WAF
+- **`modsecurity`** - ModSecurity WAF
+- **`imperva`** - Imperva SecureSphere
+- **`akamai`** - Akamai Kona Site Defender
+- **`f5_asm`** - F5 Application Security Manager
+
+---
+
+## 💡 Examples
+
+### 🔍 Reconnaissance Examples
+
+#### Basic Reconnaissance
 ```bash
 # Full pipeline on a single domain
 ezrec recon --domain example.com --subdomains --httpx --crawl --endpoints --xss --nuclei --ffuf
@@ -273,9 +379,62 @@ ezrec recon --domain example.com --httpx --ffuf --arcs 10000 \
 ezrec recon --program example --subdomains --httpx --crawl --xss --nuclei --ffuf \
   --telegram-token "123456:ABCDEF" --telegram-chat "987654321"
 
+# WAF detection + bypass with AI
+ezrec recon --domain example.com --httpx --xss --waf-detect --waf-bypass \
+  --ai --ai-provider openai --ai-key "sk-..."
+
 # Custom headers for specific bug bounty platforms
 ezrec recon --domain example.com --subdomains --httpx \
   --headers "X-Bug-Bounty-Platform=hackerone,Authorization=Bearer token123"
+```
+
+### 🛡️ Evasion Examples
+
+#### WAF Bypass Generation
+
+**Generate ALL XSS bypasses (89+ payloads):**
+```bash
+ezrec evasion waf-bypass --attack-type xss --payload "alert(1)" --output file
+# Creates: bypasses/xss.md
+```
+
+**Generate Cloudflare-specific XSS bypasses:**
+```bash
+ezrec evasion waf-bypass --attack-type xss --payload "alert(1)" --waf-type cloudflare --output file
+# Creates: bypasses/xss-cloudflare.md
+```
+
+**Generate SQLi bypasses for ModSecurity:**
+```bash
+ezrec evasion waf-bypass --attack-type sqli --payload "1' OR 1=1--" --waf-type modsecurity --output file
+# Creates: bypasses/sqli-modsecurity.md
+```
+
+**Generate SSRF bypasses:**
+```bash
+ezrec evasion waf-bypass --attack-type ssrf --payload "http://127.0.0.1" --output file
+# Creates: bypasses/ssrf.md
+```
+
+**Generate LFI bypasses:**
+```bash
+ezrec evasion waf-bypass --attack-type lfi --payload "/etc/passwd" --output file
+# Creates: bypasses/lfi.md
+```
+
+**Generate RCE bypasses:**
+```bash
+ezrec evasion waf-bypass --attack-type rce --payload "id" --output file
+# Creates: bypasses/rce.md
+```
+
+#### View Bypasses in Terminal (No File)
+```bash
+# Display in terminal instead of saving to file
+ezrec evasion waf-bypass --attack-type xss --payload "alert(1)" --waf-type cloudflare
+
+# JSON output for automation
+ezrec evasion waf-bypass --attack-type sqli --payload "1' OR 1=1--" --output json
 ```
 
 ## Configuration
@@ -401,24 +560,41 @@ Each stage generates structured output in multiple formats:
 - **CSV**: Machine-readable data for analysis and filtering  
 - **NDJSON**: Structured data for integration with other tools
 
-Example output structure:
+## 📁 Output Structure
+
+### Reconnaissance Output (`results/` directory)
 ```
 results/
-├── example/
-│   ├── subdomains.md
-│   ├── subdomains.csv
-│   ├── subdomains.ndjson
-│   ├── httpx.md
-│   ├── httpx.csv
-│   ├── httpx.ndjson
-│   ├── crawl.md
-│   ├── urls.md
-│   ├── endpoints.md
-│   ├── xss.md
-│   ├── nuclei.md
-│   ├── ffuf.md
-│   └── README.md
+├── subdomains.md          # Subdomain enumeration results
+├── subdomains.csv         # CSV format
+├── subdomains.ndjson      # NDJSON format
+├── httpx.md               # Live hosts and fingerprinting
+├── httpx.csv
+├── httpx.ndjson
+├── crawl.md               # Crawled endpoints
+├── crawl.csv
+├── crawl.ndjson
+├── urls.md                # Historical URLs
+├── endpoints.md           # Classified endpoints
+├── xss.md                 # XSS testing results
+├── nuclei.md              # Vulnerability scan results
+├── ffuf.md                # Fuzzing results
+└── README.md              # Final summary report
 ```
+
+### Evasion Output (`bypasses/` directory)
+```
+bypasses/                   # Created when you generate bypasses
+├── xss.md                 # All XSS bypasses (89+ payloads)
+├── xss-cloudflare.md      # Cloudflare XSS bypasses (28+ payloads)
+├── sqli.md                # All SQLi bypasses (60+ payloads)
+├── sqli-modsecurity.md    # ModSecurity SQLi bypasses
+├── ssrf.md                # All SSRF bypasses (50+ payloads)
+├── lfi.md                 # All LFI bypasses (20+ payloads)
+└── rce.md                 # All RCE bypasses (20+ payloads)
+```
+
+**Note:** The `bypasses/` directory is created automatically when you generate your first payload file. Each user creates their own custom bypass collection!
 
 ## Integration with External Tools
 
@@ -486,7 +662,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ```bash
 # Clone and setup
-git clone https://github.com/ezrec/ezrec.git
+git clone https://github.com/l0n3f/ezrec.git
 cd ezrec
 
 # Install dependencies

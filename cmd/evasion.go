@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -129,10 +131,10 @@ func init() {
 	evasionCmd.AddCommand(stealthCmd)
 
 	// WAF bypass flags
-	wafBypassCmd.Flags().StringVar(&attackType, "attack-type", "", "Type of attack (xss, sqli, lfi, rce)")
+	wafBypassCmd.Flags().StringVar(&attackType, "attack-type", "", "Type of attack (xss, sqli, lfi, rce, ssrf)")
 	wafBypassCmd.Flags().StringVar(&basePayload, "payload", "", "Base payload to generate bypasses for")
 	wafBypassCmd.Flags().StringVar(&wafType, "waf-type", "", "Target WAF type (cloudflare, aws_waf, azure_waf, modsecurity, imperva, akamai, f5_asm)")
-	wafBypassCmd.Flags().StringVar(&outputFormat, "output", "text", "Output format (text, json, csv)")
+	wafBypassCmd.Flags().StringVar(&outputFormat, "output", "text", "Output format (text, json, csv, file)")
 	wafBypassCmd.MarkFlagRequired("attack-type")
 	wafBypassCmd.MarkFlagRequired("payload")
 
@@ -197,6 +199,8 @@ func runWAFBypass(cmd *cobra.Command, args []string) error {
 			}
 			return rows
 		}())
+	case "file":
+		return saveToMarkdownFile(attackType, wafType, basePayload, payloads, techniques)
 	default:
 		// Text output
 		fmt.Printf("🛡️  WAF Bypass Payloads\n")
@@ -319,5 +323,103 @@ func outputJSON(data interface{}) error {
 func outputCSV(headers []string, rows [][]string) error {
 	// TODO: Implement CSV output
 	fmt.Printf("CSV output not implemented yet\n")
+	return nil
+}
+
+// saveToMarkdownFile saves bypass payloads to a markdown file
+func saveToMarkdownFile(attackType, wafType, basePayload string, payloads []string, techniques []evasion.BypassTechnique) error {
+	// Create simple filename: xss.md, sqli.md, etc.
+	filename := fmt.Sprintf("%s.md", attackType)
+	if wafType != "" {
+		filename = fmt.Sprintf("%s-%s.md", attackType, wafType)
+	}
+
+	// Create bypasses directory if it doesn't exist
+	bypassDir := "bypasses"
+	if err := os.MkdirAll(bypassDir, 0755); err != nil {
+		return fmt.Errorf("failed to create bypasses directory: %w", err)
+	}
+
+	filepath := filepath.Join(bypassDir, filename)
+
+	// Create markdown content
+	var content strings.Builder
+
+	// Header
+	content.WriteString(fmt.Sprintf("# %s WAF Bypass Payloads\n\n", strings.ToUpper(attackType)))
+	if wafType != "" {
+		content.WriteString(fmt.Sprintf("**Target WAF:** %s\n", wafType))
+	}
+	content.WriteString(fmt.Sprintf("**Base Payload:** `%s`\n", basePayload))
+	content.WriteString(fmt.Sprintf("**Generated:** %s\n", time.Now().Format("2006-01-02 15:04:05")))
+	content.WriteString(fmt.Sprintf("**Total Payloads:** %d\n\n", len(payloads)))
+
+	// Table of contents
+	content.WriteString("## Table of Contents\n\n")
+	categories := make(map[string][]int)
+	for i, technique := range techniques {
+		if i < len(payloads) {
+			categories[technique.Category] = append(categories[technique.Category], i)
+		}
+	}
+
+	for category := range categories {
+		content.WriteString(fmt.Sprintf("- [%s](#%s)\n", strings.Title(strings.ReplaceAll(category, "_", " ")), strings.ReplaceAll(category, "_", "-")))
+	}
+	content.WriteString("\n")
+
+	// Payloads by category
+	for category, indices := range categories {
+		content.WriteString(fmt.Sprintf("## %s\n\n", strings.Title(strings.ReplaceAll(category, "_", " "))))
+
+		for _, i := range indices {
+			if i < len(techniques) && i < len(payloads) {
+				technique := techniques[i]
+				payload := payloads[i]
+
+				content.WriteString(fmt.Sprintf("### %s\n\n", technique.Name))
+				content.WriteString(fmt.Sprintf("**Description:** %s\n\n", technique.Description))
+				content.WriteString(fmt.Sprintf("**Confidence:** %.0f%%\n\n", technique.Confidence*100))
+				if len(technique.WAFTypes) > 0 {
+					content.WriteString(fmt.Sprintf("**Effective Against:** %s\n\n", strings.Join(technique.WAFTypes, ", ")))
+				}
+				content.WriteString("**Payload:**\n```\n")
+				content.WriteString(payload)
+				content.WriteString("\n```\n\n")
+				content.WriteString("---\n\n")
+			}
+		}
+	}
+
+	// Statistics
+	content.WriteString("## Statistics\n\n")
+	content.WriteString(fmt.Sprintf("- **Total Techniques:** %d\n", len(techniques)))
+	content.WriteString(fmt.Sprintf("- **Categories:** %d\n", len(categories)))
+
+	// Category breakdown
+	content.WriteString("\n### Category Breakdown\n\n")
+	for category, indices := range categories {
+		content.WriteString(fmt.Sprintf("- **%s:** %d techniques\n", strings.Title(strings.ReplaceAll(category, "_", " ")), len(indices)))
+	}
+
+	// Usage examples
+	content.WriteString("\n## Usage Examples\n\n")
+	content.WriteString("### Command Line\n```bash\n")
+	content.WriteString(fmt.Sprintf("# Generate %s bypasses\n", attackType))
+	if wafType != "" {
+		content.WriteString(fmt.Sprintf("ezrec evasion waf-bypass --attack-type %s --payload \"%s\" --waf-type %s\n", attackType, basePayload, wafType))
+	} else {
+		content.WriteString(fmt.Sprintf("ezrec evasion waf-bypass --attack-type %s --payload \"%s\"\n", attackType, basePayload))
+	}
+	content.WriteString("```\n\n")
+
+	// Write to file
+	if err := os.WriteFile(filepath, []byte(content.String()), 0644); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+
+	fmt.Printf("🔥 WAF Bypass payloads saved to: %s\n", filepath)
+	fmt.Printf("📊 Generated %d payloads across %d categories\n", len(payloads), len(categories))
+
 	return nil
 }
