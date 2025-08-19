@@ -275,10 +275,20 @@ func (ff *FfufFuzzer) buildFfufArgs(targetURL, outputFile, fuzzType string, opti
 		}
 	}
 
-	// Add arc limit if specified
+	// Add arc limit if specified (FFUF uses -ac flag for auto-calibration and request limits)
 	if options.Arcs > 0 {
-		// FFUF doesn't have a direct arc limit, but we can limit requests
-		args = append(args, "-maxtime", "300") // 5 minutes max
+		// Use -maxtime to limit execution time based on arcs
+		maxTime := (options.Arcs / ff.config.Tools.Ffuf.Threads) * 2 // Estimate time
+		if maxTime < 60 {
+			maxTime = 60 // Minimum 1 minute
+		}
+		if maxTime > 1800 {
+			maxTime = 1800 // Maximum 30 minutes
+		}
+		args = append(args, "-maxtime", strconv.Itoa(maxTime))
+		
+		// Also add auto-calibration for better results
+		args = append(args, "-ac")
 	}
 
 	return args

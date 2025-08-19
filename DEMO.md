@@ -76,22 +76,22 @@ PS C:\Users\distr\Desktop\ezrec> .\ezrec.exe recon --domain example.com --subdom
 
 time=12:22:40 level=INFO msg="Using default configuration"
 time=12:22:40 level=INFO msg="Configuration initialized successfully"
-time=12:22:40 level=INFO msg="Starting reconnaissance pipeline" targets=1 program="" output=out\run-20250819-122240
+time=12:22:40 level=INFO msg="Starting reconnaissance pipeline" targets=1 program="" output=results\example
 time=12:22:40 level=INFO msg="Starting subdomain enumeration"
 time=12:22:40 level=INFO msg="✅ Subdomain enumeration completed" total_subdomains=0
 time=12:22:40 level=INFO msg="✅ Subdomain enumeration completed" found=0 duration=62.8279ms
 time=12:22:40 level=INFO msg="Generating final report"
-time=12:22:40 level=INFO msg="Final report generated" path=out\run-20250819-122240\README.md
+time=12:22:40 level=INFO msg="Final report generated" path=results\example\README.md
 time=12:22:40 level=INFO msg="Reconnaissance pipeline completed successfully"
 ```
 
 ### Generated Files
 ```
-out/run-20250819-122240/
+results/example/
 ├── README.md                 # Main report
-├── 01_subdomains.md         # Subdomain report in Markdown
-├── 01_subdomains.csv        # Subdomain data in CSV
-└── 01_subdomains.ndjson     # Structured data in NDJSON
+├── subdomains.md         # Subdomain report in Markdown
+├── subdomains.csv        # Subdomain data in CSV
+└── subdomains.ndjson     # Structured data in NDJSON
 ```
 
 ### Markdown Report Content

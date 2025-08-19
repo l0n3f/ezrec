@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/ezrec/ezrec/internal/ai"
 	"github.com/ezrec/ezrec/internal/log"
 	"github.com/ezrec/ezrec/internal/output"
 	"github.com/ezrec/ezrec/internal/recon"
@@ -36,6 +37,10 @@ var (
 	// FFUF specific flags
 	arcs         int
 	ffufWordlist string
+
+	// WAF bypass flags
+	enableWAFBypass bool
+	wafDetection    bool
 
 	// Resume flag
 	resume bool
@@ -71,6 +76,10 @@ enabled/disabled individually using the corresponding flags.`,
   # Advanced fuzzing with custom wordlist and arc count
   ezrec recon --domain example.com --httpx --ffuf --arcs 10000 --ffuf-wordlist custom.txt
 
+  # WAF bypass with AI-powered payloads
+  ezrec recon --domain example.com --httpx --xss --nuclei --waf-detect --waf-bypass \
+    --ai --ai-provider "openai" --ai-key "sk-..."
+
   # Full pipeline with Telegram notifications
   ezrec recon --program example --subdomains --httpx --crawl --xss --nuclei --ffuf \
     --telegram-token "123456:ABCDEF" --telegram-chat "987654321"`,
@@ -103,6 +112,10 @@ func init() {
 	reconCmd.Flags().IntVar(&arcs, "arcs", 1000, "number of potential directories/files to fuzz")
 	reconCmd.Flags().StringVar(&ffufWordlist, "ffuf-wordlist", "", "custom wordlist for FFUF")
 
+	// WAF bypass flags
+	reconCmd.Flags().BoolVar(&enableWAFBypass, "waf-bypass", false, "enable AI-powered WAF bypass payload generation")
+	reconCmd.Flags().BoolVar(&wafDetection, "waf-detect", false, "enable WAF detection before testing")
+
 	// Resume flag
 	reconCmd.Flags().BoolVar(&resume, "resume", false, "resume from previous incomplete run")
 }
@@ -123,9 +136,13 @@ func runRecon(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("at least one stage must be enabled")
 	}
 
-	// Create run directory with timestamp
-	timestamp := time.Now().Format("20060102-150405")
-	runDir := filepath.Join(cfg.Output.Directory, cfg.Program, fmt.Sprintf("run-%s", timestamp))
+	// Create run directory
+	var runDir string
+	if cfg.Program != "" {
+		runDir = filepath.Join(cfg.Output.Directory, cfg.Program)
+	} else {
+		runDir = cfg.Output.Directory
+	}
 
 	// Initialize output manager
 	outputManager, err := output.NewManager(runDir, cfg.Output.Formats)
@@ -138,6 +155,18 @@ func runRecon(cmd *cobra.Command, args []string) error {
 	if cfg.Telegram.Token != "" && cfg.Telegram.ChatID != "" {
 		telegramClient = telegram.NewClient(cfg.Telegram.Token, cfg.Telegram.ChatID)
 		logger.Info("Telegram notifications enabled")
+	}
+
+	// Initialize AI client if configured
+	var aiClient *ai.Client
+	if cfg.AI.Enabled && cfg.AI.APIKey != "" {
+		var err error
+		aiClient, err = ai.NewClient(cfg.AI.Provider, cfg.AI.APIKey, cfg.AI.Model)
+		if err != nil {
+			logger.Warn("Failed to initialize AI client", "error", err)
+		} else {
+			logger.Info("AI client initialized", "provider", cfg.AI.Provider, "model", cfg.AI.Model)
+		}
 	}
 
 	// Initialize reconnaissance engine
@@ -269,6 +298,36 @@ func runRecon(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Stage 5.5: WAF Detection (if enabled)
+	var wafResults map[string]*ai.WAFDetection
+	if wafDetection && len(crawledURLs) > 0 && aiClient != nil {
+		logger.Info("Starting WAF detection")
+
+		var err error
+		wafResults, err = reconEngine.DetectWAF(ctx, crawledURLs, aiClient)
+		if err != nil {
+			logger.Error("WAF detection failed", "error", err)
+			if telegramClient != nil {
+				telegramClient.SendMessage(fmt.Sprintf("❌ WAF detection failed: %v", err))
+			}
+		} else {
+			wafCount := 0
+			for _, detection := range wafResults {
+				if detection.Present {
+					wafCount++
+				}
+			}
+			logger.Info("WAF detection completed", "detected", wafCount)
+			if telegramClient != nil {
+				if wafCount > 0 {
+					telegramClient.SendMessage(fmt.Sprintf("🛡️ WAF detection complete: %d WAFs detected", wafCount))
+				} else {
+					telegramClient.SendMessage("✅ WAF detection complete: no WAFs detected")
+				}
+			}
+		}
+	}
+
 	// Stage 6: XSS Testing
 	if enableXSS && len(crawledURLs) > 0 {
 		logger.Info("Starting XSS testing")
@@ -277,6 +336,8 @@ func runRecon(cmd *cobra.Command, args []string) error {
 		xssOptions := recon.XSSOptions{
 			Payload:   xssPayload,
 			AISuggest: aiSuggest,
+			WAFBypass: enableWAFBypass,
+			WAFDetect: wafDetection,
 		}
 
 		result, err := reconEngine.TestXSS(ctx, crawledURLs, xssOptions)
@@ -393,6 +454,12 @@ func getEnabledStages() string {
 	}
 	if enableXSS {
 		stages = append(stages, "xss")
+	}
+	if wafDetection {
+		stages = append(stages, "waf-detect")
+	}
+	if enableWAFBypass {
+		stages = append(stages, "waf-bypass")
 	}
 	if enableNuclei {
 		stages = append(stages, "nuclei")

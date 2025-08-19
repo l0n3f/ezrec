@@ -148,7 +148,7 @@ ezrec recon --domain example.com --subdomains --httpx \
   --outdir "/path/to/results"
 
 # Results will be saved to:
-# /path/to/results/example/run-20240119-143022/
+# /path/to/results/example/
 ```
 
 ### Resume Previous Scans
@@ -280,7 +280,7 @@ ezrec recon --domain example.com --subdomains --httpx --crawl \
 ```bash
 # Use ezrec output as input for other tools
 ezrec recon --domain example.com --subdomains --httpx
-cat out/example/run-*/02_httpx.csv | cut -d',' -f5 | tail -n +2 > live-hosts.txt
+cat results/example/httpx.csv | cut -d',' -f5 | tail -n +2 > live-hosts.txt
 ```
 
 ## Troubleshooting

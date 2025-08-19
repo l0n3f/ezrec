@@ -1,0 +1,204 @@
+id: bug-bounty-critical-checks
+
+info:
+  name: Bug Bounty Critical Vulnerabilities
+  author: ezrec
+  severity: critical
+  description: Critical vulnerabilities commonly found in bug bounty programs
+  classification:
+    cvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
+    cvss-score: 10.0
+    cwe-id: CWE-20
+  tags: critical,bug-bounty,rce,sqli,xxe,ssrf,lfi
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/admin"
+      - "{{BaseURL}}/admin/"
+      - "{{BaseURL}}/administrator"
+      - "{{BaseURL}}/administrator/"
+      - "{{BaseURL}}/admin/login"
+      - "{{BaseURL}}/admin/admin"
+      - "{{BaseURL}}/admin/index"
+      - "{{BaseURL}}/admin/dashboard"
+      - "{{BaseURL}}/wp-admin/"
+      - "{{BaseURL}}/phpmyadmin/"
+      - "{{BaseURL}}/adminer/"
+      - "{{BaseURL}}/manager/"
+      - "{{BaseURL}}/management/"
+      - "{{BaseURL}}/control/"
+      - "{{BaseURL}}/console/"
+      - "{{BaseURL}}/panel/"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 403
+          - 401
+
+      - type: word
+        words:
+          - "admin"
+          - "administrator"
+          - "dashboard"
+          - "control panel"
+          - "management"
+          - "login"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: admin_panel
+        regex:
+          - 'admin|administrator|dashboard|control|management'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/config.php"
+      - "{{BaseURL}}/configuration.php"
+      - "{{BaseURL}}/config.inc.php"
+      - "{{BaseURL}}/settings.php"
+      - "{{BaseURL}}/database.php"
+      - "{{BaseURL}}/db.php"
+      - "{{BaseURL}}/connect.php"
+      - "{{BaseURL}}/connection.php"
+      - "{{BaseURL}}/.env"
+      - "{{BaseURL}}/config.json"
+      - "{{BaseURL}}/config.xml"
+      - "{{BaseURL}}/web.config"
+      - "{{BaseURL}}/app.config"
+      - "{{BaseURL}}/config.yml"
+      - "{{BaseURL}}/config.yaml"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "password"
+          - "database"
+          - "api_key"
+          - "secret"
+          - "token"
+          - "mysql"
+          - "postgres"
+          - "mongodb"
+          - "redis"
+          - "smtp"
+          - "aws"
+          - "azure"
+          - "gcp"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: sensitive_config
+        regex:
+          - 'password["\s]*[:=]["\s]*([^"\s]+)'
+          - 'api[_-]?key["\s]*[:=]["\s]*([^"\s]+)'
+          - 'secret["\s]*[:=]["\s]*([^"\s]+)'
+          - 'token["\s]*[:=]["\s]*([^"\s]+)'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/backup.sql"
+      - "{{BaseURL}}/database.sql"
+      - "{{BaseURL}}/dump.sql"
+      - "{{BaseURL}}/export.sql"
+      - "{{BaseURL}}/backup.zip"
+      - "{{BaseURL}}/backup.tar.gz"
+      - "{{BaseURL}}/backup.rar"
+      - "{{BaseURL}}/site.zip"
+      - "{{BaseURL}}/website.zip"
+      - "{{BaseURL}}/backup/"
+      - "{{BaseURL}}/backups/"
+      - "{{BaseURL}}/backup.txt"
+      - "{{BaseURL}}/backup.bak"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+
+    extractors:
+      - type: regex
+        name: backup_file
+        regex:
+          - 'backup|dump|export|archive'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/phpinfo.php"
+      - "{{BaseURL}}/info.php"
+      - "{{BaseURL}}/test.php"
+      - "{{BaseURL}}/debug.php"
+      - "{{BaseURL}}/status.php"
+      - "{{BaseURL}}/server-info"
+      - "{{BaseURL}}/server-status"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "phpinfo()"
+          - "PHP Version"
+          - "System"
+          - "Build Date"
+          - "Server API"
+          - "Configuration"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: php_info
+        regex:
+          - 'PHP Version ([0-9.]+)'
+          - 'System => ([^<]+)'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/"
+      - "{{BaseURL}}/api/v1/"
+      - "{{BaseURL}}/api/v2/"
+      - "{{BaseURL}}/api/v3/"
+      - "{{BaseURL}}/rest/"
+      - "{{BaseURL}}/graphql"
+      - "{{BaseURL}}/graphiql"
+      - "{{BaseURL}}/api/swagger"
+      - "{{BaseURL}}/api/docs"
+      - "{{BaseURL}}/swagger/"
+      - "{{BaseURL}}/swagger-ui/"
+      - "{{BaseURL}}/api-docs/"
+      - "{{BaseURL}}/openapi.json"
+      - "{{BaseURL}}/swagger.json"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+    extractors:
+      - type: regex
+        name: api_endpoint
+        regex:
+          - 'api|rest|graphql|swagger|openapi'
+        case-insensitive: true

@@ -211,9 +211,9 @@ func DefaultConfig() *Config {
 			},
 		},
 		Output: OutputConfig{
-			Directory: "./out",
+			Directory: "./results",
 			Formats:   []string{"markdown", "csv", "ndjson"},
-			Timestamp: true,
+			Timestamp: false,
 		},
 		AI: AIConfig{
 			Provider: "openai",

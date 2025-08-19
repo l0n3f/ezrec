@@ -73,7 +73,7 @@ ezrec/
 ├── profiles/              # Program-specific configurations
 ├── templates/             # Nuclei templates
 ├── wordlists/             # Fuzzing wordlists
-└── out/                   # Output directory
+└── results/               # Output directory
 ```
 
 ## 🎯 Key Features Implemented

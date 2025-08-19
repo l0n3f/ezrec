@@ -323,7 +323,7 @@ export EZREC_AI_API_KEY="your_openai_key"
 | `--program` | Bug bounty program name | - |
 | `--domain` | Single domain to scan | - |
 | `--seed-file` | File with domain list | - |
-| `--outdir` | Output directory | `./out` |
+| `--outdir` | Output directory | `./results` |
 | `--rate` | Requests per second | `5` |
 | `--concurrency` | Concurrent workers | `50` |
 | `--timeout` | Request timeout | `30s` |
@@ -403,15 +403,21 @@ Each stage generates structured output in multiple formats:
 
 Example output structure:
 ```
-out/
+results/
 ├── example/
-│   ├── run-20240119-143022/
-│   │   ├── 01_subdomains.md
-│   │   ├── 01_subdomains.csv
-│   │   ├── 01_subdomains.ndjson
-│   │   ├── 02_httpx.md
-│   │   ├── ...
-│   │   └── README.md
+│   ├── subdomains.md
+│   ├── subdomains.csv
+│   ├── subdomains.ndjson
+│   ├── httpx.md
+│   ├── httpx.csv
+│   ├── httpx.ndjson
+│   ├── crawl.md
+│   ├── urls.md
+│   ├── endpoints.md
+│   ├── xss.md
+│   ├── nuclei.md
+│   ├── ffuf.md
+│   └── README.md
 ```
 
 ## Integration with External Tools

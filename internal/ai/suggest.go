@@ -16,6 +16,8 @@ type Provider interface {
 	GeneratePayloads(ctx context.Context, target string, context string) ([]string, error)
 	AnalyzeVulnerability(ctx context.Context, finding string) (*Analysis, error)
 	GenerateWordlist(ctx context.Context, target string, size int) ([]string, error)
+	DetectWAF(ctx context.Context, target string, responses []WAFResponse) (*WAFDetection, error)
+	GenerateWAFBypasses(ctx context.Context, wafType string, payloadType string) ([]string, error)
 }
 
 // Analysis represents AI analysis of a vulnerability
@@ -24,6 +26,26 @@ type Analysis struct {
 	Impact      string   `json:"impact"`
 	Remediation string   `json:"remediation"`
 	References  []string `json:"references"`
+}
+
+// WAFResponse represents a response from testing WAF detection
+type WAFResponse struct {
+	URL        string            `json:"url"`
+	Payload    string            `json:"payload"`
+	StatusCode int               `json:"status_code"`
+	Headers    map[string]string `json:"headers"`
+	Body       string            `json:"body"`
+	Blocked    bool              `json:"blocked"`
+}
+
+// WAFDetection represents AI analysis of WAF presence
+type WAFDetection struct {
+	Present     bool     `json:"present"`
+	Type        string   `json:"type"`       // CloudFlare, AWS WAF, Akamai, etc.
+	Confidence  float64  `json:"confidence"` // 0.0 to 1.0
+	Indicators  []string `json:"indicators"` // Headers, response patterns, etc.
+	Bypasses    []string `json:"bypasses"`   // Suggested bypass techniques
+	Description string   `json:"description"`
 }
 
 // Client provides AI-powered suggestions and analysis
@@ -92,6 +114,24 @@ func (c *Client) GenerateWordlist(ctx context.Context, target string, size int) 
 	}
 
 	return c.provider.GenerateWordlist(ctx, target, size)
+}
+
+// DetectWAF analyzes responses to detect WAF presence and type
+func (c *Client) DetectWAF(ctx context.Context, target string, responses []WAFResponse) (*WAFDetection, error) {
+	if !c.enabled {
+		return &WAFDetection{Present: false}, nil
+	}
+
+	return c.provider.DetectWAF(ctx, target, responses)
+}
+
+// GenerateWAFBypasses generates bypass payloads for specific WAF types
+func (c *Client) GenerateWAFBypasses(ctx context.Context, wafType string, payloadType string) ([]string, error) {
+	if !c.enabled {
+		return []string{}, nil
+	}
+
+	return c.provider.GenerateWAFBypasses(ctx, wafType, payloadType)
 }
 
 // OpenAIProvider implements the Provider interface for OpenAI
@@ -246,6 +286,124 @@ Paths:`, size, target)
 	return cleanWords, nil
 }
 
+// DetectWAF analyzes responses to detect WAF presence using OpenAI
+func (p *OpenAIProvider) DetectWAF(ctx context.Context, target string, responses []WAFResponse) (*WAFDetection, error) {
+	// Build analysis data
+	var responseData strings.Builder
+	responseData.WriteString(fmt.Sprintf("Target: %s\n\n", target))
+	responseData.WriteString("Response Analysis:\n")
+
+	for i, resp := range responses {
+		responseData.WriteString(fmt.Sprintf("\nTest %d:\n", i+1))
+		responseData.WriteString(fmt.Sprintf("Payload: %s\n", resp.Payload))
+		responseData.WriteString(fmt.Sprintf("Status Code: %d\n", resp.StatusCode))
+		responseData.WriteString(fmt.Sprintf("Blocked: %t\n", resp.Blocked))
+
+		// Include relevant headers
+		for header, value := range resp.Headers {
+			if strings.Contains(strings.ToLower(header), "server") ||
+				strings.Contains(strings.ToLower(header), "cloudflare") ||
+				strings.Contains(strings.ToLower(header), "x-") ||
+				strings.Contains(strings.ToLower(header), "cf-") {
+				responseData.WriteString(fmt.Sprintf("Header %s: %s\n", header, value))
+			}
+		}
+
+		// Include body snippets if they contain WAF indicators
+		if len(resp.Body) > 0 && len(resp.Body) < 1000 {
+			responseData.WriteString(fmt.Sprintf("Body snippet: %s\n", resp.Body[:min(500, len(resp.Body))]))
+		}
+	}
+
+	prompt := fmt.Sprintf(`Analyze these HTTP responses to detect if a Web Application Firewall (WAF) is present.
+
+%s
+
+Based on the response patterns, headers, status codes, and content, determine:
+
+1. Is a WAF present? (true/false)
+2. What type of WAF? (CloudFlare, AWS WAF, Akamai, ModSecurity, F5, Imperva, etc.)
+3. Confidence level (0.0 to 1.0)
+4. Key indicators that led to this conclusion
+5. Suggested bypass techniques for this WAF type
+
+Respond in JSON format:
+{
+  "present": boolean,
+  "type": "string",
+  "confidence": float,
+  "indicators": ["string"],
+  "bypasses": ["string"],
+  "description": "string"
+}`, responseData.String())
+
+	response, err := p.callAPI(ctx, prompt)
+	if err != nil {
+		return nil, err
+	}
+
+	var detection WAFDetection
+	if err := json.Unmarshal([]byte(response), &detection); err != nil {
+		// If JSON parsing fails, try to extract basic info
+		detection = WAFDetection{
+			Present:     strings.Contains(strings.ToLower(response), "true"),
+			Type:        "Unknown",
+			Confidence:  0.5,
+			Indicators:  []string{"AI analysis completed"},
+			Bypasses:    []string{},
+			Description: "WAF detection completed with limited parsing",
+		}
+	}
+
+	return &detection, nil
+}
+
+// GenerateWAFBypasses generates bypass payloads for specific WAF types using OpenAI
+func (p *OpenAIProvider) GenerateWAFBypasses(ctx context.Context, wafType string, payloadType string) ([]string, error) {
+	prompt := fmt.Sprintf(`Generate 15 advanced WAF bypass payloads for:
+WAF Type: %s
+Payload Type: %s
+
+Requirements:
+- Use real-world proven bypass techniques
+- Include encoding variations (URL, HTML, Unicode, etc.)
+- Use case variation bypasses
+- Include comment-based bypasses
+- Add space and delimiter variations
+- Consider filter evasion techniques specific to %s
+- Include both simple and complex payloads
+- Focus on practical payloads that work in real scenarios
+
+Return only the payloads, one per line, without explanations or numbering.
+
+Payloads:`, wafType, payloadType, wafType)
+
+	response, err := p.callAPI(ctx, prompt)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse payloads from response
+	payloads := strings.Split(strings.TrimSpace(response), "\n")
+	var cleanPayloads []string
+	for _, payload := range payloads {
+		payload = strings.TrimSpace(payload)
+		if payload != "" && !strings.HasPrefix(payload, "#") && !strings.HasPrefix(payload, "//") {
+			cleanPayloads = append(cleanPayloads, payload)
+		}
+	}
+
+	return cleanPayloads, nil
+}
+
+// min helper function
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // callAPI makes a request to the OpenAI API
 func (p *OpenAIProvider) callAPI(ctx context.Context, prompt string) (string, error) {
 	request := OpenAIRequest{
@@ -329,6 +487,16 @@ func (p *AnthropicProvider) GenerateWordlist(ctx context.Context, target string,
 	return []string{}, nil
 }
 
+func (p *AnthropicProvider) DetectWAF(ctx context.Context, target string, responses []WAFResponse) (*WAFDetection, error) {
+	// TODO: Implement Anthropic integration
+	return &WAFDetection{Present: false}, nil
+}
+
+func (p *AnthropicProvider) GenerateWAFBypasses(ctx context.Context, wafType string, payloadType string) ([]string, error) {
+	// TODO: Implement Anthropic integration
+	return []string{}, nil
+}
+
 type OllamaProvider struct {
 	model string
 }
@@ -348,6 +516,16 @@ func (p *OllamaProvider) AnalyzeVulnerability(ctx context.Context, finding strin
 }
 
 func (p *OllamaProvider) GenerateWordlist(ctx context.Context, target string, size int) ([]string, error) {
+	// TODO: Implement Ollama integration
+	return []string{}, nil
+}
+
+func (p *OllamaProvider) DetectWAF(ctx context.Context, target string, responses []WAFResponse) (*WAFDetection, error) {
+	// TODO: Implement Ollama integration
+	return &WAFDetection{Present: false}, nil
+}
+
+func (p *OllamaProvider) GenerateWAFBypasses(ctx context.Context, wafType string, payloadType string) ([]string, error) {
 	// TODO: Implement Ollama integration
 	return []string{}, nil
 }

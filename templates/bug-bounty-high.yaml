@@ -1,0 +1,322 @@
+id: bug-bounty-high-impact
+
+info:
+  name: Bug Bounty High Impact Vulnerabilities
+  author: ezrec
+  severity: high
+  description: High impact vulnerabilities for bug bounty hunting
+  classification:
+    cvss-metrics: CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N
+    cvss-score: 8.1
+    cwe-id: CWE-79
+  tags: high,bug-bounty,xss,csrf,idor,auth-bypass
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/login"
+      - "{{BaseURL}}/login/"
+      - "{{BaseURL}}/signin"
+      - "{{BaseURL}}/sign-in"
+      - "{{BaseURL}}/auth"
+      - "{{BaseURL}}/authentication"
+      - "{{BaseURL}}/oauth"
+      - "{{BaseURL}}/sso"
+      - "{{BaseURL}}/saml"
+      - "{{BaseURL}}/ldap"
+      - "{{BaseURL}}/register"
+      - "{{BaseURL}}/signup"
+      - "{{BaseURL}}/sign-up"
+      - "{{BaseURL}}/forgot-password"
+      - "{{BaseURL}}/reset-password"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "login"
+          - "signin"
+          - "sign in"
+          - "username"
+          - "password"
+          - "email"
+          - "authentication"
+          - "oauth"
+          - "sso"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: auth_form
+        regex:
+          - '<form[^>]*action[^>]*login[^>]*>'
+          - '<input[^>]*type[^>]*password[^>]*>'
+          - '<input[^>]*name[^>]*password[^>]*>'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/user/profile"
+      - "{{BaseURL}}/user/settings"
+      - "{{BaseURL}}/user/account"
+      - "{{BaseURL}}/profile"
+      - "{{BaseURL}}/account"
+      - "{{BaseURL}}/settings"
+      - "{{BaseURL}}/dashboard"
+      - "{{BaseURL}}/my-account"
+      - "{{BaseURL}}/myaccount"
+      - "{{BaseURL}}/user/edit"
+      - "{{BaseURL}}/user/update"
+      - "{{BaseURL}}/user/delete"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+          - 401
+          - 403
+
+    extractors:
+      - type: regex
+        name: user_endpoint
+        regex:
+          - 'user|profile|account|settings|dashboard'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/upload"
+      - "{{BaseURL}}/upload/"
+      - "{{BaseURL}}/uploads/"
+      - "{{BaseURL}}/file-upload"
+      - "{{BaseURL}}/file/upload"
+      - "{{BaseURL}}/media/upload"
+      - "{{BaseURL}}/image/upload"
+      - "{{BaseURL}}/document/upload"
+      - "{{BaseURL}}/attachment/upload"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "upload"
+          - "file upload"
+          - "choose file"
+          - "select file"
+          - "browse"
+          - "drag and drop"
+          - "enctype"
+          - "multipart/form-data"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: upload_form
+        regex:
+          - '<form[^>]*enctype[^>]*multipart[^>]*>'
+          - '<input[^>]*type[^>]*file[^>]*>'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/search"
+      - "{{BaseURL}}/search/"
+      - "{{BaseURL}}/s"
+      - "{{BaseURL}}/query"
+      - "{{BaseURL}}/find"
+      - "{{BaseURL}}/lookup"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+
+    extractors:
+      - type: regex
+        name: search_param
+        regex:
+          - 'name[^>]*=[^>]*["\']?(q|query|search|s|find|lookup)["\']?'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/robots.txt"
+      - "{{BaseURL}}/sitemap.xml"
+      - "{{BaseURL}}/sitemap.txt"
+      - "{{BaseURL}}/crossdomain.xml"
+      - "{{BaseURL}}/clientaccesspolicy.xml"
+      - "{{BaseURL}}/security.txt"
+      - "{{BaseURL}}/.well-known/security.txt"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+
+    extractors:
+      - type: regex
+        name: info_disclosure
+        regex:
+          - 'Disallow: ([^\n\r]+)'
+          - 'Sitemap: ([^\n\r]+)'
+          - 'Contact: ([^\n\r]+)'
+          - 'Encryption: ([^\n\r]+)'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/debug"
+      - "{{BaseURL}}/debug/"
+      - "{{BaseURL}}/test"
+      - "{{BaseURL}}/test/"
+      - "{{BaseURL}}/dev"
+      - "{{BaseURL}}/development"
+      - "{{BaseURL}}/staging"
+      - "{{BaseURL}}/beta"
+      - "{{BaseURL}}/alpha"
+      - "{{BaseURL}}/sandbox"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "debug"
+          - "development"
+          - "staging"
+          - "test"
+          - "beta"
+          - "alpha"
+          - "sandbox"
+          - "error"
+          - "exception"
+          - "stack trace"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: debug_info
+        regex:
+          - 'debug|development|staging|test|error|exception'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/git/config"
+      - "{{BaseURL}}/.git/config"
+      - "{{BaseURL}}/.git/HEAD"
+      - "{{BaseURL}}/.git/index"
+      - "{{BaseURL}}/.git/logs/HEAD"
+      - "{{BaseURL}}/.svn/entries"
+      - "{{BaseURL}}/.svn/wc.db"
+      - "{{BaseURL}}/.hg/hgrc"
+      - "{{BaseURL}}/.bzr/branch/branch.conf"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+
+    extractors:
+      - type: regex
+        name: vcs_exposure
+        regex:
+          - '\[core\]|\[remote|\[branch'
+          - 'repositoryformatversion|filemode|bare'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/backup.sql"
+      - "{{BaseURL}}/database.sql"
+      - "{{BaseURL}}/dump.sql"
+      - "{{BaseURL}}/export.sql"
+      - "{{BaseURL}}/users.sql"
+      - "{{BaseURL}}/backup.zip"
+      - "{{BaseURL}}/backup.tar.gz"
+      - "{{BaseURL}}/backup.rar"
+      - "{{BaseURL}}/site-backup.zip"
+      - "{{BaseURL}}/website.zip"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "CREATE TABLE"
+          - "INSERT INTO"
+          - "DROP TABLE"
+          - "mysqldump"
+          - "pg_dump"
+          - "-- Database"
+          - "PK-"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: database_backup
+        regex:
+          - 'CREATE TABLE|INSERT INTO|DROP TABLE|mysqldump|pg_dump'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/server-status"
+      - "{{BaseURL}}/server-info"
+      - "{{BaseURL}}/status"
+      - "{{BaseURL}}/info"
+      - "{{BaseURL}}/health"
+      - "{{BaseURL}}/metrics"
+      - "{{BaseURL}}/stats"
+      - "{{BaseURL}}/statistics"
+      - "{{BaseURL}}/monitor"
+      - "{{BaseURL}}/monitoring"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "Apache Server Status"
+          - "Server Information"
+          - "Server Version"
+          - "Server Built"
+          - "Current Time"
+          - "Restart Time"
+          - "Server uptime"
+          - "Total accesses"
+          - "CPU Usage"
+          - "requests/sec"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: server_info
+        regex:
+          - 'Server Version: ([^\n\r]+)'
+          - 'Server Built: ([^\n\r]+)'
+          - 'Apache/([0-9.]+)'
+        case-insensitive: true

@@ -8,12 +8,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ezrec/ezrec/internal/ai"
 	"github.com/ezrec/ezrec/internal/classify"
 	"github.com/ezrec/ezrec/internal/config"
 	"github.com/ezrec/ezrec/internal/log"
 	"github.com/ezrec/ezrec/internal/output"
 	"github.com/ezrec/ezrec/internal/scope"
 	"github.com/ezrec/ezrec/internal/telegram"
+	"github.com/ezrec/ezrec/internal/waf"
 )
 
 // Engine orchestrates the reconnaissance pipeline
@@ -91,6 +93,8 @@ type Finding struct {
 type XSSOptions struct {
 	Payload   string
 	AISuggest bool
+	WAFBypass bool
+	WAFDetect bool
 }
 
 // NucleiOptions contains options for Nuclei scanning
@@ -382,6 +386,40 @@ func (e *Engine) TestXSS(ctx context.Context, urls []string, options XSSOptions)
 
 	e.logger.Success("XSS testing completed", "vulnerabilities", len(vulnerabilities), "duration", duration)
 	return result, nil
+}
+
+// DetectWAF performs WAF detection on target URLs
+func (e *Engine) DetectWAF(ctx context.Context, urls []string, aiClient *ai.Client) (map[string]*ai.WAFDetection, error) {
+	start := time.Now()
+	e.logger.Progress("Starting WAF detection", "urls", len(urls))
+
+	detector := waf.NewDetector(aiClient, e.logger)
+	results := make(map[string]*ai.WAFDetection)
+
+	for _, url := range urls {
+		if len(results) >= 5 { // Limit to first 5 URLs to avoid overwhelming
+			break
+		}
+
+		detection, err := detector.DetectWAF(ctx, url)
+		if err != nil {
+			e.logger.Warn("WAF detection failed for URL", "url", url, "error", err)
+			continue
+		}
+
+		results[url] = detection
+
+		if detection.Present {
+			e.logger.Info("WAF detected",
+				"url", url,
+				"type", detection.Type,
+				"confidence", detection.Confidence)
+		}
+	}
+
+	duration := time.Since(start)
+	e.logger.Success("WAF detection completed", "scanned", len(results), "duration", duration)
+	return results, nil
 }
 
 // RunNuclei performs Nuclei vulnerability scanning

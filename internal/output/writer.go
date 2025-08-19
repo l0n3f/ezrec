@@ -99,7 +99,7 @@ func (sw *StageWriter) WriteStageResult(result *StageResult) error {
 
 // writeMarkdown writes results in Markdown format
 func (sw *StageWriter) writeMarkdown(result *StageResult) error {
-	filename := fmt.Sprintf("%02d_%s.md", getStageNumber(result.Stage), result.Stage)
+	filename := fmt.Sprintf("%s.md", result.Stage)
 	filepath := filepath.Join(sw.baseDir, filename)
 
 	file, err := os.Create(filepath)
@@ -279,7 +279,7 @@ func (sw *StageWriter) writeEndpointMarkdown(file *os.File, findings []Finding) 
 
 // writeCSV writes results in CSV format
 func (sw *StageWriter) writeCSV(result *StageResult) error {
-	filename := fmt.Sprintf("%02d_%s.csv", getStageNumber(result.Stage), result.Stage)
+	filename := fmt.Sprintf("%s.csv", result.Stage)
 	filepath := filepath.Join(sw.baseDir, filename)
 
 	file, err := os.Create(filepath)
@@ -319,7 +319,7 @@ func (sw *StageWriter) writeCSV(result *StageResult) error {
 
 // writeNDJSON writes results in NDJSON format
 func (sw *StageWriter) writeNDJSON(result *StageResult) error {
-	filename := fmt.Sprintf("%02d_%s.ndjson", getStageNumber(result.Stage), result.Stage)
+	filename := fmt.Sprintf("%s.ndjson", result.Stage)
 	filepath := filepath.Join(sw.baseDir, filename)
 
 	file, err := os.Create(filepath)
@@ -378,21 +378,4 @@ func (m *Manager) GenerateFinalReport(outputPath string) error {
 	return nil
 }
 
-// getStageNumber returns the stage number for ordering
-func getStageNumber(stage string) int {
-	stageNumbers := map[string]int{
-		"subdomains": 1,
-		"httpx":      2,
-		"crawl":      3,
-		"urls":       4,
-		"endpoints":  5,
-		"xss":        6,
-		"nuclei":     7,
-		"ffuf":       8,
-	}
-
-	if num, exists := stageNumbers[stage]; exists {
-		return num
-	}
-	return 99
-}
+// Note: Stage numbering removed for cleaner file names

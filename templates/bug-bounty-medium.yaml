@@ -1,0 +1,321 @@
+id: bug-bounty-medium-findings
+
+info:
+  name: Bug Bounty Medium Impact Vulnerabilities
+  author: ezrec
+  severity: medium
+  description: Medium impact vulnerabilities and information disclosure for bug bounty
+  classification:
+    cvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N
+    cvss-score: 6.1
+    cwe-id: CWE-200
+  tags: medium,bug-bounty,info-disclosure,misconfiguration
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/package.json"
+      - "{{BaseURL}}/composer.json"
+      - "{{BaseURL}}/bower.json"
+      - "{{BaseURL}}/yarn.lock"
+      - "{{BaseURL}}/package-lock.json"
+      - "{{BaseURL}}/composer.lock"
+      - "{{BaseURL}}/Gemfile"
+      - "{{BaseURL}}/Gemfile.lock"
+      - "{{BaseURL}}/requirements.txt"
+      - "{{BaseURL}}/Pipfile"
+      - "{{BaseURL}}/pom.xml"
+      - "{{BaseURL}}/build.gradle"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+
+    extractors:
+      - type: regex
+        name: dependencies
+        regex:
+          - '"name":\s*"([^"]+)"'
+          - '"version":\s*"([^"]+)"'
+          - 'require[^{]*{([^}]+)}'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/error"
+      - "{{BaseURL}}/error/"
+      - "{{BaseURL}}/errors"
+      - "{{BaseURL}}/exception"
+      - "{{BaseURL}}/exceptions"
+      - "{{BaseURL}}/404"
+      - "{{BaseURL}}/500"
+      - "{{BaseURL}}/403"
+      - "{{BaseURL}}/debug/error"
+      - "{{BaseURL}}/error-log"
+      - "{{BaseURL}}/error.log"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 500
+
+      - type: word
+        words:
+          - "stack trace"
+          - "exception"
+          - "error"
+          - "traceback"
+          - "debug"
+          - "warning"
+          - "fatal"
+          - "line"
+          - "file"
+          - "function"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: error_info
+        regex:
+          - 'in ([^:]+):([0-9]+)'
+          - 'at ([^(]+)\('
+          - 'File "([^"]+)"'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/logs"
+      - "{{BaseURL}}/logs/"
+      - "{{BaseURL}}/log"
+      - "{{BaseURL}}/log/"
+      - "{{BaseURL}}/access.log"
+      - "{{BaseURL}}/error.log"
+      - "{{BaseURL}}/debug.log"
+      - "{{BaseURL}}/application.log"
+      - "{{BaseURL}}/app.log"
+      - "{{BaseURL}}/system.log"
+      - "{{BaseURL}}/audit.log"
+      - "{{BaseURL}}/security.log"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+
+    extractors:
+      - type: regex
+        name: log_files
+        regex:
+          - '\d{4}-\d{2}-\d{2}|\d{2}/\d{2}/\d{4}'
+          - '\d{2}:\d{2}:\d{2}'
+          - 'ERROR|WARN|INFO|DEBUG'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/swagger-ui/"
+      - "{{BaseURL}}/swagger/"
+      - "{{BaseURL}}/api-docs/"
+      - "{{BaseURL}}/docs/"
+      - "{{BaseURL}}/documentation/"
+      - "{{BaseURL}}/redoc/"
+      - "{{BaseURL}}/graphiql"
+      - "{{BaseURL}}/playground"
+      - "{{BaseURL}}/altair"
+      - "{{BaseURL}}/voyager"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "swagger"
+          - "api documentation"
+          - "openapi"
+          - "redoc"
+          - "graphiql"
+          - "playground"
+          - "api explorer"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: api_docs
+        regex:
+          - 'swagger|openapi|redoc|graphiql'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/mail"
+      - "{{BaseURL}}/webmail"
+      - "{{BaseURL}}/email"
+      - "{{BaseURL}}/roundcube"
+      - "{{BaseURL}}/squirrelmail"
+      - "{{BaseURL}}/horde"
+      - "{{BaseURL}}/zimbra"
+      - "{{BaseURL}}/outlook"
+      - "{{BaseURL}}/owa"
+      - "{{BaseURL}}/exchange"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+
+      - type: word
+        words:
+          - "webmail"
+          - "email"
+          - "roundcube"
+          - "squirrelmail"
+          - "outlook"
+          - "exchange"
+          - "zimbra"
+          - "horde"
+          - "mail server"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: webmail
+        regex:
+          - 'webmail|roundcube|squirrelmail|outlook|exchange'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/jenkins"
+      - "{{BaseURL}}/jenkins/"
+      - "{{BaseURL}}/ci"
+      - "{{BaseURL}}/continuous-integration"
+      - "{{BaseURL}}/gitlab"
+      - "{{BaseURL}}/github"
+      - "{{BaseURL}}/bitbucket"
+      - "{{BaseURL}}/bamboo"
+      - "{{BaseURL}}/teamcity"
+      - "{{BaseURL}}/travis"
+      - "{{BaseURL}}/circleci"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: word
+        words:
+          - "jenkins"
+          - "continuous integration"
+          - "build"
+          - "pipeline"
+          - "gitlab"
+          - "github"
+          - "bitbucket"
+          - "bamboo"
+          - "teamcity"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: ci_system
+        regex:
+          - 'jenkins|gitlab|github|bitbucket|bamboo|teamcity'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/monitoring"
+      - "{{BaseURL}}/grafana"
+      - "{{BaseURL}}/prometheus"
+      - "{{BaseURL}}/kibana"
+      - "{{BaseURL}}/elasticsearch"
+      - "{{BaseURL}}/logstash"
+      - "{{BaseURL}}/splunk"
+      - "{{BaseURL}}/nagios"
+      - "{{BaseURL}}/zabbix"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+
+      - type: word
+        words:
+          - "grafana"
+          - "prometheus"
+          - "kibana"
+          - "elasticsearch"
+          - "monitoring"
+          - "metrics"
+          - "dashboard"
+          - "nagios"
+          - "zabbix"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: monitoring_system
+        regex:
+          - 'grafana|prometheus|kibana|elasticsearch|nagios|zabbix'
+        case-insensitive: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/payment"
+      - "{{BaseURL}}/payments"
+      - "{{BaseURL}}/billing"
+      - "{{BaseURL}}/checkout"
+      - "{{BaseURL}}/cart"
+      - "{{BaseURL}}/order"
+      - "{{BaseURL}}/orders"
+      - "{{BaseURL}}/invoice"
+      - "{{BaseURL}}/invoices"
+      - "{{BaseURL}}/subscription"
+      - "{{BaseURL}}/subscriptions"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+
+      - type: word
+        words:
+          - "payment"
+          - "billing"
+          - "checkout"
+          - "credit card"
+          - "paypal"
+          - "stripe"
+          - "invoice"
+          - "subscription"
+          - "order"
+          - "cart"
+        condition: or
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        name: payment_system
+        regex:
+          - 'payment|billing|checkout|paypal|stripe|invoice'
+        case-insensitive: true

@@ -4,7 +4,7 @@ ezrec.exe
 *.exe
 
 # Output directories
-out/
+results/
 *.log
 
 # Development files

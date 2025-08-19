@@ -227,7 +227,7 @@ ffuf -V
 ezrec recon --domain example.com --subdomains --httpx --verbose
 
 # Check output
-ls -la out/
+ls -la results/
 ```
 
 ## 🛠️ External Tools Details

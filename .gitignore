@@ -18,7 +18,7 @@ go.work
 vendor/
 
 # Output directories
-out/
+results/
 *.log
 
 # IDE files
