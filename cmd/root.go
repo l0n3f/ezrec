@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -67,24 +68,27 @@ var (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "ezrec",
-	Short: "Bug Bounty Recon Orchestrator",
-	Long: `ezrec is a comprehensive bug bounty reconnaissance tool that automates
-the entire discovery pipeline from subdomain enumeration to vulnerability testing.
+	Short: "Ultimate Bug Bounty Recon & Evasion Orchestrator",
+	Long: `ezrec is the most comprehensive bug bounty reconnaissance and evasion tool.
 
-Features:
-  • Modular and scalable recon pipeline
-  • Subdomain enumeration (subfinder, amass)
-  • Host liveness and fingerprinting (httpx)
-  • Endpoint crawling (katana)
-  • Historical URL discovery (gau, waybackurls)
-  • Critical endpoint classification (login, admin, API, payments)
-  • Interactive XSS testing with AI-powered payload suggestions
-  • Nuclei integration with enhanced templates
-  • Advanced fuzzing with ffuf
-  • Structured outputs (Markdown, CSV, NDJSON)
-  • Telegram notifications and alerts
-  • Rate limiting and scope awareness
-  • Program-specific configurations`,
+🔍 RECONNAISSANCE COMMANDS:
+  ezrec recon    - Complete automated reconnaissance pipeline
+  
+🛡️  EVASION COMMANDS:
+  ezrec evasion  - Advanced WAF bypass and evasion techniques
+
+⚙️  UTILITY COMMANDS:
+  ezrec completion - Generate shell completion scripts
+
+🚀 QUICK START:
+  ezrec recon --domain example.com --subdomains --httpx --crawl --xss
+  ezrec evasion waf-bypass --attack-type xss --payload "alert(1)" --output file
+
+Use "ezrec [command] --help" for more information about a specific command.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		// Show help when no subcommand is provided
+		cmd.Help()
+	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		return initConfig()
 	},
@@ -92,25 +96,27 @@ Features:
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() error {
-	// Show banner unless quiet mode is enabled or help is requested
+	// Show banner only when running 'ezrec' without any subcommands
 	args := os.Args
-	isHelp := false
 	isQuiet := false
+	hasSubcommand := false
 	
-	for _, arg := range args {
-		if arg == "--help" || arg == "-h" {
-			isHelp = true
-			break
-		}
+	// Check for quiet flag and subcommands
+	for i, arg := range args {
 		if arg == "--quiet" || arg == "-q" {
 			isQuiet = true
+		}
+		// Check if there's a subcommand (not a flag)
+		if i > 0 && !strings.HasPrefix(arg, "-") {
+			hasSubcommand = true
 			break
 		}
 	}
 	
-	// Show banner for actual command execution (not help)
-	if !isHelp && !isQuiet && len(args) > 1 {
+	// Show banner only when running 'ezrec' without subcommands
+	if !isQuiet && !hasSubcommand && len(args) >= 1 {
 		showBanner()
+		fmt.Println() // Add spacing after banner
 	}
 
 	// Setup signal handling for graceful shutdown
